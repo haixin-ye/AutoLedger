@@ -44,6 +44,7 @@ import com.yhx.autoledger.ui.components.MainBalanceCard
 import com.yhx.autoledger.ui.components.MainBottomBar
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.navigation.Screen
+import com.yhx.autoledger.ui.screens.AIScreen
 import com.yhx.autoledger.ui.theme.AutoLedgerTheme
 import com.yhx.autoledger.ui.theme.CategoryFood
 import com.yhx.autoledger.ui.theme.CategoryOther
@@ -83,7 +84,7 @@ class MainActivity : ComponentActivity() {
                                 Screen.Home.route -> HomeContent()
 
                                 Screen.Detail.route -> "明细列表"
-                                Screen.AI.route -> "AI 助手"
+                                Screen.AI.route -> AIScreen()
                                 Screen.Settings.route -> "设置中心"
                             }
                         }
