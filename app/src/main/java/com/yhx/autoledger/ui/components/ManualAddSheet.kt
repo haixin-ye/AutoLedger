@@ -2,7 +2,17 @@ package com.yhx.autoledger.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -12,8 +22,19 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.EditNote
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,25 +43,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.*
+import com.yhx.autoledger.ui.theme.AccentBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualAddSheet(
     onDismiss: () -> Unit,
-    // ✨ 修改点 1：回调函数增加一个 String 参数，用于传递备注/标题
-    onSave: (category: String, amount: String, remark: String) -> Unit
+    // ✨ 修改点 1：回调函数增加一个 Int 类型的 type (0代表支出，1代表收入)
+    onSave: (type: Int, category: String, amount: String, remark: String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val categories = listOf(
+    // ✨ 修改点 2：拆分支出和收入的分类列表
+    val expenseCategories = listOf(
         "餐饮" to "🍱", "交通" to "🚗", "购物" to "🛒",
         "娱乐" to "🎮", "居住" to "🏠", "其他" to "⚙️"
     )
+    val incomeCategories = listOf(
+        "工资" to "💰", "理财" to "📈", "兼职" to "💼",
+        "红包" to "🧧", "报销" to "🧾", "其他" to "💵"
+    )
 
-    var selectedCategory by remember { mutableStateOf(categories[0].first) }
+    // ✨ 修改点 3：记录当前选择的是支出(0)还是收入(1)
+    var transactionType by remember { mutableStateOf(0) }
+
+    // 根据当前的收支类型，动态决定显示哪个分类列表
+    val currentCategories = if (transactionType == 0) expenseCategories else incomeCategories
+
+    // 每次切换收支类型时，自动选中列表里的第一个分类
+    var selectedCategory by remember(transactionType) { mutableStateOf(currentCategories[0].first) }
     var amountText by remember { mutableStateOf("") }
-    // ✨ 修改点 2：新增备注状态
     var remarkText by remember { mutableStateOf("") }
 
     ModalBottomSheet(
@@ -53,10 +85,40 @@ fun ManualAddSheet(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("手动记账", fontSize = 18.sp, fontWeight = FontWeight.Black)
+
+            // ✨ 修改点 4：顶部的 支出/收入 优雅切换器
+            Row(
+                modifier = Modifier
+                    .width(200.dp)
+                    .background(Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                    .padding(4.dp)
+            ) {
+                // 支出按钮
+                Box(
+                    modifier = Modifier.weight(1f)
+                        .background(if (transactionType == 0) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
+                        .clickable { transactionType = 0 }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("支出", fontWeight = if (transactionType == 0) FontWeight.Bold else FontWeight.Normal, color = if (transactionType == 0) Color.Black else Color.Gray)
+                }
+                // 收入按钮
+                Box(
+                    modifier = Modifier.weight(1f)
+                        .background(if (transactionType == 1) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
+                        .clickable { transactionType = 1 }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("收入", fontWeight = if (transactionType == 1) FontWeight.Bold else FontWeight.Normal, color = if (transactionType == 1) Color.Black else Color.Gray)
+                }
+            }
+
             Spacer(Modifier.height(24.dp))
 
-            // 1. 金额输入区
+            // 1. 金额输入区 (根据收支改变符号颜色)
+            val symbolColor = if (transactionType == 0) AccentBlue else Color(0xFF4CAF50) // 支出蓝色，收入绿色
             Surface(
                 color = Color.White,
                 shape = RoundedCornerShape(24.dp),
@@ -66,7 +128,7 @@ fun ManualAddSheet(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("¥", fontSize = 32.sp, fontWeight = FontWeight.Black, color = AccentBlue)
+                    Text(if (transactionType == 0) "- ¥" else "+ ¥", fontSize = 28.sp, fontWeight = FontWeight.Black, color = symbolColor)
                     Spacer(Modifier.width(12.dp))
                     BasicTextField(
                         value = amountText,
@@ -86,7 +148,7 @@ fun ManualAddSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            // ✨ 修改点 3：新增备注输入区 (保持和金额输入框一致的 UI 风格)
+            // 2. 备注输入区
             Surface(
                 color = Color.White,
                 shape = RoundedCornerShape(16.dp),
@@ -106,7 +168,7 @@ fun ManualAddSheet(
                         singleLine = true,
                         decorationBox = { innerTextField ->
                             if (remarkText.isEmpty()) {
-                                Text("添加备注（如：星巴克、打车费）", fontSize = 15.sp, color = Color.LightGray)
+                                Text("添加备注", fontSize = 15.sp, color = Color.LightGray)
                             }
                             innerTextField()
                         }
@@ -116,22 +178,22 @@ fun ManualAddSheet(
 
             Spacer(Modifier.height(24.dp))
 
-            // 2. 分类选择区 (网格布局)
+            // 3. 分类选择区 (动态使用 currentCategories)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth().height(160.dp)
             ) {
-                items(categories) { (name, icon) ->
+                items(currentCategories) { (name, icon) ->
                     val isSelected = selectedCategory == name
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.bounceClick().clickable { selectedCategory = name }
+                        modifier = Modifier.clickable { selectedCategory = name }
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = if (isSelected) AccentBlue else Color.White,
+                            color = if (isSelected) symbolColor else Color.White,
                             modifier = Modifier.size(52.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -139,25 +201,25 @@ fun ManualAddSheet(
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        Text(name, fontSize = 12.sp, color = if (isSelected) AccentBlue else Color.Gray, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                        Text(name, fontSize = 12.sp, color = if (isSelected) symbolColor else Color.Gray, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
                     }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // 3. 保存按钮
+            // 4. 保存按钮
             Button(
                 onClick = {
                     if (amountText.isNotBlank()) {
-                        // ✨ 修改点 4：如果用户没填备注，就默认用分类名作为标题（比如用户选了餐饮没写备注，那标题就是"餐饮"）
                         val finalRemark = if (remarkText.isNotBlank()) remarkText else selectedCategory
-                        onSave(selectedCategory, amountText, finalRemark)
+                        // ✨ 传出 type 参数
+                        onSave(transactionType, selectedCategory, amountText, finalRemark)
                         onDismiss()
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp).bounceClick(),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = symbolColor),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Text("保存一笔", fontSize = 16.sp, fontWeight = FontWeight.Bold)

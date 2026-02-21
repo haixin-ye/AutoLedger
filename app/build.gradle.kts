@@ -61,6 +61,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

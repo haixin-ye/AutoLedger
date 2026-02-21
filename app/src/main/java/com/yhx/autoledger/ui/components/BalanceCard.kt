@@ -1,6 +1,7 @@
 package com.yhx.autoledger.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,18 +30,26 @@ import com.yhx.autoledger.ui.theme.LightBlueGradient
 
 @Composable
 fun MainBalanceCard(
-    expense: String, budget: String, income: String, balance: String, dailyAvg: String
+    expense: String, budget: String, income: String, balance: String, dailyAvg: String,
+    onClick: () -> Unit = {} // ✨ 1. 必须有这个参数
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .height(230.dp) // 稍微加高，防止内容拥挤
+            .height(230.dp)
+            // ⚠️ 外层不要加 clickable，只保留 bounceClick 动画
             .bounceClick(),
         shape = RoundedCornerShape(32.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(LightBlueGradient)) {
+        // ✨ 2. 终极杀手锏：把点击事件加在最里层的 Box 上！
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable { onClick() } // <-- 事件在这里触发，绝对不会失效
+                .background(LightBlueGradient)
+        ) {
             // 1. 背景装饰圆（放在底层）
             Surface(
                 modifier = Modifier.size(160.dp).offset(x = 220.dp, y = (-40).dp),
