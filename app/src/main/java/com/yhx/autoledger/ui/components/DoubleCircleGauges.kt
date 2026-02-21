@@ -80,7 +80,7 @@ fun BudgetSettingSheet(
             val safeColor = Color(0xFF2ED573)   // 活力薄荷绿 (明亮且不刺眼)
             val dangerColor = Color(0xFFFF4757) // 现代西瓜红
             val previewColor = lerp(safeColor, dangerColor, previewMonthProgress)
-
+            
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 // 左侧月环预览
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
