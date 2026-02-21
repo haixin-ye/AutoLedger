@@ -11,7 +11,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Home : Screen("home", "首页", Icons.Default.Home)
     object Detail : Screen("detail", "明细", Icons.Default.List)
     object AI : Screen("ai", "AI助手", Icons.Default.Face) // 或者是麦克风图标
-    object Settings : Screen("settings", "管理", Icons.Default.Settings)
+    object Settings : Screen("settings", "我的", Icons.Default.Settings)
 }
 
 val bottomNavItems = listOf(
