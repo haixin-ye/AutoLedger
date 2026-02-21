@@ -1,10 +1,14 @@
 package com.yhx.autoledger
 
+// 别忘了在文件顶部引入必要的动画相关包
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -25,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -89,11 +94,36 @@ class MainActivity : ComponentActivity() {
                     containerColor = Color(0xFFF7F9FC)
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
+
+                        // ✨ 定义页面的空间顺序（从左到右）
+                        val tabOrder = listOf(
+                            Screen.Home.route,
+                            Screen.Detail.route,
+                            Screen.AI.route,
+                            Screen.Settings.route
+                        )
+
                         AnimatedContent(
                             targetState = currentScreen,
                             transitionSpec = {
-                                slideInHorizontally { it } + fadeIn() togetherWith
-                                        slideOutHorizontally { -it } + fadeOut()
+                                // ✨ 步骤 2：获取当前页面和目标页面的索引位置
+                                val initialIndex = tabOrder.indexOf(initialState)
+                                val targetIndex = tabOrder.indexOf(targetState)
+
+                                // ✨ 步骤 3：定义流畅的动画曲线 (300毫秒的缓动动画)
+                                val animSpec: TweenSpec<IntOffset> = tween<IntOffset>(durationMillis = 350, easing = EaseInOut)
+                                val fadeSpec = tween<Float>(durationMillis = 300)
+
+                                // ✨ 步骤 4：智能判断滑动方向
+                                if (targetIndex > initialIndex) {
+                                    // 往右点：新页面从右侧进来，老页面向左侧退出
+                                    (slideInHorizontally(animationSpec = animSpec) { width -> width } + fadeIn(animationSpec = fadeSpec)) togetherWith
+                                            (slideOutHorizontally(animationSpec = animSpec) { width -> -width } + fadeOut(animationSpec = fadeSpec))
+                                } else {
+                                    // 往左点：新页面从左侧进来，老页面向右侧退出
+                                    (slideInHorizontally(animationSpec = animSpec) { width -> -width } + fadeIn(animationSpec = fadeSpec)) togetherWith
+                                            (slideOutHorizontally(animationSpec = animSpec) { width -> width } + fadeOut(animationSpec = fadeSpec))
+                                }
                             },
                             label = "screen_transition"
                         ) { targetRoute ->
@@ -113,7 +143,7 @@ class MainActivity : ComponentActivity() {
                     if (showAddSheet) {
                         ManualAddSheet(
                             onDismiss = { showAddSheet = false },
-                            onSave = { type,category, amount, remark ->
+                            onSave = { type,category, amount, remark,timestamp ->
                                 // 把字符串金额转为 Double
                                 val parsedAmount = amount.toDoubleOrNull() ?: 0.0
 
@@ -133,6 +163,7 @@ class MainActivity : ComponentActivity() {
                                     type = type,
                                     categoryName = category,
                                     categoryIcon = icon,
+                                    timestamp = timestamp,
                                     note = remark
                                 )
                             }

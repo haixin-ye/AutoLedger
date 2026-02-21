@@ -41,7 +41,7 @@ fun MainBottomBar(
                         Icon(
                             imageVector = screen.icon,
                             contentDescription = screen.title,
-                            modifier = Modifier.bounceClick() // 再次复用你的缩放动效
+//                            modifier = Modifier.bounceClick() // 再次复用你的缩放动效
                         )
                     },
                     label = { Text(screen.title, fontSize = 12.sp) },

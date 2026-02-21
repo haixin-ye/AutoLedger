@@ -26,12 +26,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,12 +51,12 @@ import com.yhx.autoledger.ui.theme.AccentBlue
 @Composable
 fun ManualAddSheet(
     onDismiss: () -> Unit,
-    // ✨ 修改点 1：回调函数增加一个 Int 类型的 type (0代表支出，1代表收入)
-    onSave: (type: Int, category: String, amount: String, remark: String) -> Unit
+    // ✨ 修改点 1：回调函数增加一个 Long 类型的 timestamp，用于传出时间
+    onSave: (type: Int, category: String, amount: String, remark: String, timestamp: Long) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selectedTimestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    // ✨ 修改点 2：拆分支出和收入的分类列表
     val expenseCategories = listOf(
         "餐饮" to "🍱", "交通" to "🚗", "购物" to "🛒",
         "娱乐" to "🎮", "居住" to "🏠", "其他" to "⚙️"
@@ -64,13 +66,9 @@ fun ManualAddSheet(
         "红包" to "🧧", "报销" to "🧾", "其他" to "💵"
     )
 
-    // ✨ 修改点 3：记录当前选择的是支出(0)还是收入(1)
     var transactionType by remember { mutableStateOf(0) }
-
-    // 根据当前的收支类型，动态决定显示哪个分类列表
     val currentCategories = if (transactionType == 0) expenseCategories else incomeCategories
 
-    // 每次切换收支类型时，自动选中列表里的第一个分类
     var selectedCategory by remember(transactionType) { mutableStateOf(currentCategories[0].first) }
     var amountText by remember { mutableStateOf("") }
     var remarkText by remember { mutableStateOf("") }
@@ -86,14 +84,12 @@ fun ManualAddSheet(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // ✨ 修改点 4：顶部的 支出/收入 优雅切换器
             Row(
                 modifier = Modifier
                     .width(200.dp)
                     .background(Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
                     .padding(4.dp)
             ) {
-                // 支出按钮
                 Box(
                     modifier = Modifier.weight(1f)
                         .background(if (transactionType == 0) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
@@ -103,7 +99,6 @@ fun ManualAddSheet(
                 ) {
                     Text("支出", fontWeight = if (transactionType == 0) FontWeight.Bold else FontWeight.Normal, color = if (transactionType == 0) Color.Black else Color.Gray)
                 }
-                // 收入按钮
                 Box(
                     modifier = Modifier.weight(1f)
                         .background(if (transactionType == 1) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
@@ -117,8 +112,7 @@ fun ManualAddSheet(
 
             Spacer(Modifier.height(24.dp))
 
-            // 1. 金额输入区 (根据收支改变符号颜色)
-            val symbolColor = if (transactionType == 0) AccentBlue else Color(0xFF4CAF50) // 支出蓝色，收入绿色
+            val symbolColor = if (transactionType == 0) AccentBlue else Color(0xFF4CAF50)
             Surface(
                 color = Color.White,
                 shape = RoundedCornerShape(24.dp),
@@ -148,7 +142,22 @@ fun ManualAddSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            // 2. 备注输入区
+            //日期选择器
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Text("交易日期：", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                Spacer(modifier = Modifier.weight(1f))
+
+                DateSelectorButton(
+                    currentTimestamp = selectedTimestamp,
+                    onDateSelected = { newTime -> selectedTimestamp = newTime }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             Surface(
                 color = Color.White,
                 shape = RoundedCornerShape(16.dp),
@@ -178,7 +187,6 @@ fun ManualAddSheet(
 
             Spacer(Modifier.height(24.dp))
 
-            // 3. 分类选择区 (动态使用 currentCategories)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -213,8 +221,8 @@ fun ManualAddSheet(
                 onClick = {
                     if (amountText.isNotBlank()) {
                         val finalRemark = if (remarkText.isNotBlank()) remarkText else selectedCategory
-                        // ✨ 传出 type 参数
-                        onSave(transactionType, selectedCategory, amountText, finalRemark)
+                        // ✨ 修改点 2：把选中的时间戳 selectedTimestamp 传出去！
+                        onSave(transactionType, selectedCategory, amountText, finalRemark, selectedTimestamp)
                         onDismiss()
                     }
                 },

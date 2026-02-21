@@ -28,12 +28,14 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -74,6 +76,8 @@ fun EditLedgerSheet(
     val initialRemark = if (initialLedger.note == initialLedger.categoryName) "" else initialLedger.note
     var remarkText by remember { mutableStateOf(initialRemark) }
 
+    var editTimestamp by remember(initialLedger) { mutableLongStateOf(initialLedger.timestamp) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -109,6 +113,19 @@ fun EditLedgerSheet(
                 }
             }
 
+            // 2. 插入日期选择组件
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Text("修改日期：", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.weight(1f))
+
+                DateSelectorButton(
+                    currentTimestamp = editTimestamp,
+                    onDateSelected = { newTime -> editTimestamp = newTime }
+                )
+            }
             Spacer(Modifier.height(24.dp))
 
             // 1. 金额输入区
@@ -173,6 +190,7 @@ fun EditLedgerSheet(
                             type = transactionType,
                             categoryName = selectedCategory,
                             categoryIcon = icon,
+                            timestamp = editTimestamp, // ✅ 更新时间戳
                             note = finalRemark
                         )
                         onSave(updatedLedger)

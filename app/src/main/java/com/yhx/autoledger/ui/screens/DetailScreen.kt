@@ -34,7 +34,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,8 +65,6 @@ import com.yhx.autoledger.viewmodel.DetailViewModel
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
-
-import androidx.compose.material.icons.filled.ArrowBack
 
 // 在文件顶部定义高级色板
 private val PremiumColors = listOf(
@@ -336,7 +333,7 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
             columns = GridCells.Fixed(7),
             modifier = Modifier.height(240.dp),
             userScrollEnabled = false,
-            verticalArrangement = Arrangement.spacedBy(7.dp) // 增加行间距
+            verticalArrangement = Arrangement.spacedBy(6.dp) // 增加行间距
         ) {
             items(firstDayOfWeek) { Spacer(Modifier.size(40.dp)) }
             items(daysInMonth) { dayIndex ->
@@ -361,10 +358,10 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean) {
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp)
+            .height(45.dp)
             // 今天的高亮依然保留一个极淡的底色
             .background(
-                if (isToday) Color(0xFFF0F4F8) else Color.Transparent,
+                if (isToday) Color(0xFFDADDE0) else Color.Transparent,
                 RoundedCornerShape(12.dp)
             )
     ) {
@@ -378,7 +375,7 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean) {
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // 2. 极简净收支数字 (去掉了丑陋的胶囊底块)
+        // 2. 极简净收支数字
         if (exp > 0.0 || inc > 0.0) {
             val isIncome = netAmount > 0
             // 采用更柔和、饱和度更低的红绿色，避免刺眼

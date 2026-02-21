@@ -73,6 +73,7 @@ class HomeViewModel @Inject constructor(
         type: Int,
         categoryName: String,
         categoryIcon: String,
+        timestamp: Long, // 接收 UI 传来的时间戳
         note: String
     ) {
         viewModelScope.launch {
@@ -81,7 +82,7 @@ class HomeViewModel @Inject constructor(
                 type = type,
                 categoryName = categoryName,
                 categoryIcon = categoryIcon,
-                timestamp = System.currentTimeMillis(), // 记录当前时间
+                timestamp = timestamp, // ✅ 正确：使用 UI 组件（ManualAddSheet）传过来的时间
                 note = note,
                 source = "MANUAL" // 手动记账
             )

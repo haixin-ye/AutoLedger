@@ -63,6 +63,12 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Retrofit & OkHttp
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0") // 用于在Logcat打印网络请求日志，方便调试
+
     // Room
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
