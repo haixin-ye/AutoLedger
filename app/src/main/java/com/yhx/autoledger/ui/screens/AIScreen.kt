@@ -50,6 +50,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.yhx.autoledger.models.BillPreview
+import com.yhx.autoledger.models.ChatMessage
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.theme.AccentBlue
 import com.yhx.autoledger.ui.theme.CategoryFood
@@ -102,7 +104,13 @@ fun AIScreen() {
                             val response = ChatMessage(
                                 content = "识别成功！已为您生成账单详情：",
                                 isFromUser = false,
-                                billPreview = BillPreview("餐饮美食", "15.00", "2026-02-20", "🍜", CategoryFood)
+                                billPreview = BillPreview(
+                                    "餐饮美食",
+                                    "15.00",
+                                    "2026-02-20",
+                                    "🍜",
+                                    CategoryFood
+                                )
                             )
                             messages.add(response)
                         }

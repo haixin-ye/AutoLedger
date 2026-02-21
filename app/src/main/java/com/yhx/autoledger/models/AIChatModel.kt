@@ -1,4 +1,4 @@
-package com.yhx.autoledger.ui.screens
+package com.yhx.autoledger.models
 
 import androidx.compose.ui.graphics.Color
 

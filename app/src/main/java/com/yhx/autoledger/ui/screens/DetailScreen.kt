@@ -51,10 +51,10 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.RefinedTransactionItem
-import com.yhx.autoledger.TransactionData
 import com.yhx.autoledger.models.CategoryPercentage
 import com.yhx.autoledger.models.MonthlyStats
+import com.yhx.autoledger.ui.components.RefinedTransactionItem
+import com.yhx.autoledger.ui.components.TransactionData
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.theme.AccentBlue
 import java.time.YearMonth
@@ -301,7 +301,14 @@ fun CategoryDetailView(category: CategoryPercentage, onBack: () -> Unit) {
         // 使用与首页一致的账目块
         LazyColumn(contentPadding = PaddingValues(16.dp)) {
             items(5) {
-                RefinedTransactionItem(TransactionData(category.name, category.icon, "25.00", category.color))
+                RefinedTransactionItem(
+                    TransactionData(
+                        category.name,
+                        category.icon,
+                        "25.00",
+                        category.color
+                    )
+                )
             }
         }
     }
