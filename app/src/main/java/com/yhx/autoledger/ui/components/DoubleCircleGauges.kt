@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -76,11 +75,22 @@ fun BudgetSettingSheet(
             val previewMonthProgress = (monthExpense / previewMonthBudget).toFloat().coerceIn(0f, 1f)
             //增加一个日环的数值变化情况
             val previewDayProgress=(todayExpense/previewDayBudget).toFloat().coerceIn(0f, 1f)
-            // ✨ 颜色渐变算法：从 绿色 (安全) 渐变到 红色 (超支)
-            val safeColor = Color(0xFF2ED573)   // 活力薄荷绿 (明亮且不刺眼)
-            val dangerColor = Color(0xFFFF4757) // 现代西瓜红
-            val previewColor = lerp(safeColor, dangerColor, previewMonthProgress)
-            
+            // ✨ 优化：高级的三色渐变算法 (绿 -> 黄 -> 红)
+            val safeColor = Color(0xFF2ED573)    // 活力绿
+            val warningColor = Color(0xFFFFC107) // 警告黄
+            val dangerColor = Color(0xFFFF4757)  // 西瓜红
+
+            val previewColor = when {
+                previewMonthProgress <= 0.5f -> {
+                    // 0% ~ 50% 阶段：绿色到黄色渐变。把进度乘以2，映射到 0~1 的区间
+                    androidx.compose.ui.graphics.lerp(safeColor, warningColor, previewMonthProgress * 2f)
+                }
+                else -> {
+                    // 50% ~ 100% 阶段：黄色到红色渐变。
+                    androidx.compose.ui.graphics.lerp(warningColor, dangerColor, (previewMonthProgress - 0.5f) * 2f)
+                }
+            }
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 // 左侧月环预览
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

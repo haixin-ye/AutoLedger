@@ -9,6 +9,17 @@ android {
     namespace = "com.yhx.autoledger"
     compileSdk = 34
 
+    // 将你原来的这一段替换掉
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            val output = this
+            if (output is com.android.build.gradle.api.ApkVariantOutput) {
+                // 自定义文件名：应用名_版本号_构建类型.apk
+                output.outputFileName = "AutoLedger_${variant.versionName}_${variant.name}.apk"
+            }
+        }
+    }
     defaultConfig {
         applicationId = "com.yhx.autoledger"
         minSdk = 26

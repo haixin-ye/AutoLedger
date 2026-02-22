@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 // --- 请求模型 ---
 data class ChatRequest(
-    val model: String = "deepseek-chat", // 使用硅基流动免费提供的 Qwen 7B 模型
+    val model: String = "deepseek-chat", // 使用deepseek 模型
     val messages: List<Message>,
     val temperature: Double = 0.1, // 温度设低一点，让AI输出更理性和稳定（适合提取格式化数据）
     @SerializedName("response_format")

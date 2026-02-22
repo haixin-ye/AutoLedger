@@ -5,18 +5,13 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.EaseInOut
-import androidx.compose.animation.core.TweenSpec
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -26,10 +21,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -56,6 +51,7 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var categoryDao: CategoryDao
 
+    @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 3. 临时测试代码：强行读取一次数据库，触发 onCreate 回调和预设数据注入
@@ -67,25 +63,45 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AutoLedgerTheme {
-                var currentScreen by remember { mutableStateOf(Screen.Home.route) }
+                // ✨ 1. 定义页面的顺序列表（作为 Pager 的数据源）
+                val tabOrder = remember {
+                    listOf(Screen.Home, Screen.Detail, Screen.AI, Screen.Settings)
+                }
+
+                // ✨ 2. 初始化 Pager 状态 (管理当前滑到了哪一页)
+                val pagerState = rememberPagerState(pageCount = { tabOrder.size })
+
+                // ✨ 3. 协程作用域 (用于点击底部导航时，触发页面平滑滚动)
+                val coroutineScope = rememberCoroutineScope()
+
                 var showAddSheet by remember { mutableStateOf(false) }
 
                 Scaffold(
                     bottomBar = {
                         MainBottomBar(
-                            currentRoute = currentScreen,
-                            onNavigate = { currentScreen = it }
+                            // 动态获取当前滑到的页面 Route，传给底部导航栏让图标高亮
+                            currentRoute = tabOrder[pagerState.currentPage].route,
+                            onNavigate = { route ->
+                                // 当用户点击底部图标时，找到目标索引，并触发平滑滚动
+                                val targetIndex = tabOrder.indexOfFirst { it.route == route }
+                                if (targetIndex != -1) {
+                                    coroutineScope.launch {
+                                        // 丝滑地滚动到目标页！
+                                        pagerState.scrollToPage(targetIndex)
+                                    }
+                                }
+                            }
                         )
                     },
                     floatingActionButton = {
-                        // 智能判断：只在首页和明细页显示加号
-                        if (currentScreen == Screen.Home.route || currentScreen == Screen.Detail.route) {
+                        // ✨ 智能判断：第 0 页(首页) 和 第 1 页(明细页) 才显示加号
+                        if (pagerState.currentPage == 0 || pagerState.currentPage == 1) {
                             FloatingActionButton(
                                 onClick = { showAddSheet = true },
                                 containerColor = AccentBlue,
                                 contentColor = Color.White,
-                                shape = CircleShape, // 完美的正圆形
-                                modifier = Modifier.padding(bottom = 16.dp).bounceClick() // 增加一点底部间距和点击动效
+                                shape = CircleShape,
+                                modifier = Modifier.padding(bottom = 16.dp).bounceClick()
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "手动记账", modifier = Modifier.size(28.dp))
                             }
@@ -95,59 +111,29 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
 
-                        // ✨ 定义页面的空间顺序（从左到右）
-                        val tabOrder = listOf(
-                            Screen.Home.route,
-                            Screen.Detail.route,
-                            Screen.AI.route,
-                            Screen.Settings.route
-                        )
-
-                        AnimatedContent(
-                            targetState = currentScreen,
-                            transitionSpec = {
-                                // ✨ 步骤 2：获取当前页面和目标页面的索引位置
-                                val initialIndex = tabOrder.indexOf(initialState)
-                                val targetIndex = tabOrder.indexOf(targetState)
-
-                                // ✨ 步骤 3：定义流畅的动画曲线 (300毫秒的缓动动画)
-                                val animSpec: TweenSpec<IntOffset> = tween<IntOffset>(durationMillis = 350, easing = EaseInOut)
-                                val fadeSpec = tween<Float>(durationMillis = 300)
-
-                                // ✨ 步骤 4：智能判断滑动方向
-                                if (targetIndex > initialIndex) {
-                                    // 往右点：新页面从右侧进来，老页面向左侧退出
-                                    (slideInHorizontally(animationSpec = animSpec) { width -> width } + fadeIn(animationSpec = fadeSpec)) togetherWith
-                                            (slideOutHorizontally(animationSpec = animSpec) { width -> -width } + fadeOut(animationSpec = fadeSpec))
-                                } else {
-                                    // 往左点：新页面从左侧进来，老页面向右侧退出
-                                    (slideInHorizontally(animationSpec = animSpec) { width -> -width } + fadeIn(animationSpec = fadeSpec)) togetherWith
-                                            (slideOutHorizontally(animationSpec = animSpec) { width -> width } + fadeOut(animationSpec = fadeSpec))
-                                }
-                            },
-                            label = "screen_transition"
-                        ) { targetRoute ->
-                            when (targetRoute) {
-                                Screen.Home.route -> HomeScreen() // 引用抽离后的 HomeScreen
+                        // ✨ 4. 核心武器：HorizontalPager 完美接管手势与页面内容！
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize()
+                        ) { pageIndex ->
+                            // 根据当前的页码，渲染对应的屏幕
+                            when (tabOrder[pageIndex].route) {
+                                Screen.Home.route -> HomeScreen()
                                 Screen.Detail.route -> DetailScreen()
                                 Screen.AI.route -> AIScreen()
                                 Screen.Settings.route -> SettingsScreen()
                             }
-
                         }
                     }
 
-                    // ✨ 挂载弹窗组件
+                    // ✨ 挂载弹窗组件 (这部分代码保持你原来的逻辑完全不变)
                     val homeViewModel: HomeViewModel = hiltViewModel()
 
                     if (showAddSheet) {
                         ManualAddSheet(
                             onDismiss = { showAddSheet = false },
-                            onSave = { type,category, amount, remark,timestamp ->
-                                // 把字符串金额转为 Double
+                            onSave = { type, category, amount, remark, timestamp ->
                                 val parsedAmount = amount.toDoubleOrNull() ?: 0.0
-
-                                // 简单匹配一下图标 (为了演示，你可以把这个提取成一个工具方法)
                                 val icon = when (category) {
                                     "餐饮" -> "🍱"
                                     "交通" -> "🚗"
@@ -156,8 +142,6 @@ class MainActivity : ComponentActivity() {
                                     "居住" -> "🏠"
                                     else -> "⚙️"
                                 }
-
-                                // 写入数据库！
                                 homeViewModel.addLedger(
                                     amount = parsedAmount,
                                     type = type,

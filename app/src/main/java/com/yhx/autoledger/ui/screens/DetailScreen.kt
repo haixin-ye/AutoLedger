@@ -29,9 +29,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -42,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,9 +54,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yhx.autoledger.models.CategoryPercentage
 import com.yhx.autoledger.models.MonthlyStats
@@ -62,6 +68,7 @@ import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.theme.AccentBlue
 import com.yhx.autoledger.viewmodel.DailyRecord
 import com.yhx.autoledger.viewmodel.DetailViewModel
+import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -87,11 +94,11 @@ fun getPremiumBaseColor(index: Int): Color {
     return PremiumColors[index % PremiumColors.size].first
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
     val monthlyStats by viewModel.monthlyStats.collectAsState()
-    val dailyRecordsMap by viewModel.dailyRecordsMap.collectAsState() // 接收新的双数据 Map
+    val dailyRecordsMap by viewModel.dailyRecordsMap.collectAsState()
     val categoryPercentages by viewModel.categoryPercentages.collectAsState()
     val currentMonthLedgers by viewModel.currentMonthLedgers.collectAsState()
 
@@ -100,15 +107,143 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
     val initialPage = (today.year - baseMonth.year) * 12 + (today.monthValue - baseMonth.monthValue)
     val pagerState = rememberPagerState(initialPage = initialPage) { 2400 }
 
-    // ✨ 修复 1 & 2：移除 <=0 的拦截，允许未来/空月份彻底刷新为 0.0 数据
+    val scope = rememberCoroutineScope()
+    var showMonthPicker by remember { mutableStateOf(false) }
+
+    val currentMonth = remember(pagerState.currentPage) {
+        baseMonth.plusMonths(pagerState.currentPage.toLong())
+    }
+
+
+    @Composable
+    fun YearMonthPickerDialog(
+        initialMonth: YearMonth,
+        onConfirm: (YearMonth) -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        // 记录弹窗内部独立的状态
+        var selectedYear by remember { mutableStateOf(initialMonth.year) }
+        var selectedMonth by remember { mutableStateOf(initialMonth.monthValue) }
+
+        Dialog(onDismissRequest = onDismiss) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White,
+                shadowElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // 1. 年份切换 Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { selectedYear-- }) {
+                            Icon(Icons.Default.ChevronLeft, contentDescription = "上一年")
+                        }
+                        Text(
+                            text = "$selectedYear 年",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF2D3436)
+                        )
+                        IconButton(onClick = { selectedYear++ }) {
+                            Icon(Icons.Default.ChevronRight, contentDescription = "下一年")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 2. 12个月份网格
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4), // 一行4个月，共3行
+                        modifier = Modifier.height(150.dp),
+                        userScrollEnabled = false,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(12) { index ->
+                            val month = index + 1
+                            val isSelected = month == selectedMonth
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) AccentBlue else Color(0xFFF0F4F8))
+                                    .clickable { selectedMonth = month }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${month}月",
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color.White else Color(0xFF2D3436)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // 3. 底部操作按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        androidx.compose.material3.TextButton(onClick = onDismiss) {
+                            Text("取消", color = Color.Gray)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        androidx.compose.material3.Button(
+                            onClick = { onConfirm(YearMonth.of(selectedYear, selectedMonth)) },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("确定")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ✨ 真正的日期选择弹窗
+    if (showMonthPicker) {
+        YearMonthPickerDialog(
+            initialMonth = currentMonth, // 打开时默认选中当前页面显示的月份
+            onConfirm = { selectedYearMonth ->
+                // 计算选中的年月对应 Pager 的哪一页
+                val targetPage = (selectedYearMonth.year - baseMonth.year) * 12 +
+                        (selectedYearMonth.monthValue - baseMonth.monthValue)
+
+                // 平滑滑动过去
+                scope.launch {
+                    pagerState.animateScrollToPage(targetPage)
+                }
+                showMonthPicker = false // 关闭弹窗
+            },
+            onDismiss = {
+                showMonthPicker = false // 取消关闭弹窗
+            }
+        )
+    }
+
+
+
     LaunchedEffect(pagerState.currentPage) {
         val newOffset = pagerState.currentPage - initialPage
         viewModel.monthOffset.value = newOffset
     }
 
-    val currentMonth =
-        remember(pagerState.currentPage) { baseMonth.plusMonths(pagerState.currentPage.toLong()) }
     var selectedCategoryInfo by remember { mutableStateOf<Pair<CategoryPercentage, Int>?>(null) }
+
+
 
     AnimatedContent(targetState = selectedCategoryInfo, label = "screen_transition") { info ->
         if (info == null) {
@@ -117,10 +252,10 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                 pagerState,
                 monthlyStats,
                 dailyRecordsMap,
-                categoryPercentages
-            ) { cat, idx ->
-                selectedCategoryInfo = cat to idx
-            }
+                categoryPercentages,
+                onMonthClick = { showMonthPicker = true }, // 传入点击事件
+                onCategoryClick = { cat, idx -> selectedCategoryInfo = cat to idx }
+            )
         } else {
             CategoryDetailView(
                 info.first,
@@ -139,45 +274,48 @@ fun MainDetailContent(
     stats: MonthlyStats,
     dailyMap: Map<Int, DailyRecord>,
     categories: List<CategoryPercentage>,
+    onMonthClick: () -> Unit,
     onCategoryClick: (CategoryPercentage, Int) -> Unit
 ) {
-    LazyColumn(modifier = Modifier
-        .fillMaxSize()
-        .background(Color(0xFFF7F9FC))) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(Color(0xFFF7F9FC))) {
+        // ✨ 需求 1：修改后的 TopBar
+        item { DetailTopBar(month, onMonthClick) }
 
-        // ✨ 恢复 1：顶部的月份切换标题
-        item { DetailTopBar(month) }
-
-        // ✨ 恢复 2：核心的日历滑动组件
         item {
+            // ✨ 需求 3：增强滑动体验
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.height(300.dp).padding(horizontal = 16.dp)
+                modifier = Modifier.height(300.dp).padding(horizontal = 16.dp),
+                pageSpacing = 16.dp
             ) { page ->
-                val pageMonth = YearMonth.of(2000, 1).plusMonths(page.toLong())
-                CalendarGrid(pageMonth, dailyMap)
+                // 计算当前页面的偏移量 (0.0 到 1.0)
+                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+
+                // 根据偏移量计算缩放和透明度
+                val alpha = 1f - Math.abs(pageOffset).coerceIn(0f, 0.6f)
+                val scale = 1f - (Math.abs(pageOffset) * 0.08f)
+
+                Box(modifier = Modifier.graphicsLayer {
+                    this.alpha = alpha
+                    this.scaleX = scale
+                    this.scaleY = scale
+                }) {
+                    val pageMonth = YearMonth.of(2000, 1).plusMonths(page.toLong())
+                    CalendarGrid(pageMonth, dailyMap)
+                }
             }
         }
 
-        // ✨ 恢复 3：收支结余数据总览
         item { DataOverviewSection(stats) }
 
         if (categories.isEmpty()) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                     Text("本月暂无记录 🍃", color = Color.Gray, fontSize = 16.sp)
                 }
             }
         } else {
-            // 您的圆环图
             item { PremiumDonutChart(categories, stats.totalExpense) }
-
-            // 分类明细列表
             itemsIndexed(categories) { index, category ->
                 CategoryDetailRow(category, index) { onCategoryClick(category, index) }
             }
@@ -309,19 +447,15 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
 // ✨ 日历显示支出和收入
 @Composable
 fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
+    // 这里的 1 代表周一，如果你的日历是以周日开头，需要处理这个偏移
     val firstDayOfWeek = month.atDay(1).dayOfWeek.value % 7
     val daysInMonth = month.lengthOfMonth()
-    val today = Calendar.getInstance()
-    val isCurrentMonth =
-        month.year == today.get(Calendar.YEAR) && month.monthValue == (today.get(Calendar.MONTH) + 1)
-    val todayDay = today.get(Calendar.DAY_OF_MONTH)
 
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp)
-    ) {
-        // 星期抬头
+    // ✨ 需求 2：计算补全日期
+    val prevMonth = month.minusMonths(1)
+    val daysInPrevMonth = prevMonth.lengthOfMonth()
+
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             listOf("日", "一", "二", "三", "四", "五", "六").forEach {
                 Text(it, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color.Gray)
@@ -331,66 +465,75 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
-            modifier = Modifier.height(240.dp),
+            modifier = Modifier.height(280.dp),
             userScrollEnabled = false,
-            verticalArrangement = Arrangement.spacedBy(6.dp) // 增加行间距
+            verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            items(firstDayOfWeek) { Spacer(Modifier.size(40.dp)) }
-            items(daysInMonth) { dayIndex ->
-                val day = dayIndex + 1
-                val record = dailyMap[day]
-                val isToday = isCurrentMonth && day == todayDay
+            // 1. 填充上个月的末尾日期
+            items(firstDayOfWeek) { index ->
+                val day = daysInPrevMonth - (firstDayOfWeek - index - 1)
+                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false)
+            }
 
-                CalendarDayCell(day = day, record = record, isToday = isToday)
+            // 2. 填充本月日期
+            val today = Calendar.getInstance()
+            val isThisMonth = month.year == today.get(Calendar.YEAR) && month.monthValue == (today.get(Calendar.MONTH) + 1)
+
+            items(daysInMonth) { index ->
+                val day = index + 1
+                val isToday = isThisMonth && day == today.get(Calendar.DAY_OF_MONTH)
+                CalendarDayCell(day = day, record = dailyMap[day], isToday = isToday, isCurrentMonth = true)
+            }
+
+            // 3. 填充下个月的起始日期（保证日历格子整齐，填充到 42 格即 6 行）
+            val remainingCells = 42 - (firstDayOfWeek + daysInMonth)
+            items(remainingCells) { index ->
+                val day = index + 1
+                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false)
             }
         }
     }
 }
 
 @Composable
-fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean) {
-    val exp = record?.expense ?: 0.0
-    val inc = record?.income ?: 0.0
-    val netAmount = inc - exp
+fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentMonth: Boolean) {
+    // ✨ 需求 2：非本月日期设为半透明灰色
+    val textColor = if (isCurrentMonth) {
+        if (isToday) Color(0xFF1976D2) else Color(0xFF2D3436)
+    } else {
+        Color.Gray.copy(alpha = 0.3f)
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(45.dp)
-            // 今天的高亮依然保留一个极淡的底色
-            .background(
-                if (isToday) Color(0xFFDADDE0) else Color.Transparent,
-                RoundedCornerShape(12.dp)
-            )
+        modifier = Modifier.fillMaxWidth().height(46.dp).background(
+            if (isToday) Color(0xFFDADDE0) else Color.Transparent,
+            RoundedCornerShape(8.dp)
+        )
     ) {
-        // 1. 日期
         Text(
             text = day.toString(),
-            fontSize = 15.sp,
+            fontSize = 14.sp,
             fontWeight = if (isToday) FontWeight.Black else FontWeight.Medium,
-            color = if (isToday) Color(0xFF1976D2) else Color(0xFF2D3436)
+            color = textColor
         )
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // 2. 极简净收支数字
-        if (exp > 0.0 || inc > 0.0) {
-            val isIncome = netAmount > 0
-            // 采用更柔和、饱和度更低的红绿色，避免刺眼
-            val themeColor = if (isIncome) Color(0xFF34A853) else Color(0xFFE53935)
-            val prefix = if (isIncome) "+" else "-"
-
+        /// 仅本月且有数据时显示
+        if (isCurrentMonth && record != null && (record.expense > 0 || record.income > 0)) {
+            val netAmount = record.income - record.expense
             Text(
-                text = "${prefix}${String.format("%.0f", Math.abs(netAmount))}",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.ExtraBold, // 极小字号必须配合超粗体
-                color = themeColor,
+                text = "${if(netAmount >= 0) "+" else "-"}${Math.abs(netAmount).toInt()}",
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                color = (if (netAmount >= 0) Color(0xFF34A853) else Color(0xFFE53935)).copy(alpha = 0.7f),
                 maxLines = 1
             )
         } else {
-            Spacer(modifier = Modifier.height(11.dp)) // 占位，防止排版跳动
+            // 占位空间也要缩小
+            Spacer(modifier = Modifier.height(9.dp))
         }
     }
 }
@@ -492,23 +635,15 @@ fun CategoryDetailView(
 }
 
 @Composable
-fun DetailTopBar(month: YearMonth) {
+fun DetailTopBar(month: YearMonth, onMonthClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp, 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(24.dp, 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            "账单明细",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.weight(1f)
-        )
+        Text("账单明细", fontSize = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+
         Surface(
-            modifier = Modifier
-                .bounceClick()
-                .clickable { /* 弹出年月选择器接口 */ },
+            modifier = Modifier.bounceClick().clickable { onMonthClick() },
             color = Color.White,
             shape = RoundedCornerShape(12.dp),
             shadowElevation = 2.dp
@@ -522,7 +657,14 @@ fun DetailTopBar(month: YearMonth) {
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Icon(Icons.Default.ChevronRight, null, Modifier.size(16.dp), tint = AccentBlue)
+                Spacer(Modifier.width(4.dp))
+                // ✨ 需求 1：改为向下箭头，表示可点击下拉
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = AccentBlue
+                )
             }
         }
     }

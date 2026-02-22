@@ -42,11 +42,22 @@ fun DoubleCircleGauges(
     val safeMonthProgress = monthProgress.coerceIn(0f, 1f)
     val safeDayProgress = dayProgress.coerceIn(0f, 1f)
 
-    // ✨ 颜色渐变魔法：根据进度从 绿色 丝滑过渡到 红色
-    val safeColor = Color(0xFF2ED573)   // 活力薄荷绿
-    val dangerColor = Color(0xFFFF4757) // 现代西瓜红
-    val monthColor = lerp(safeColor, dangerColor, safeMonthProgress)
-    val dayColor = lerp(safeColor, dangerColor, safeDayProgress)
+    // ✨ 定义三色标准
+    val safeColor = Color(0xFF2ED573)    // 活力绿
+    val warningColor = Color(0xFFFFC107) // 警告黄
+    val dangerColor = Color(0xFFFF4757)  // 西瓜红
+
+    // 计算月圆环颜色
+    val monthColor = when {
+        safeMonthProgress <= 0.5f -> lerp(safeColor, warningColor, safeMonthProgress * 2f)
+        else -> lerp(warningColor, dangerColor, (safeMonthProgress - 0.5f) * 2f)
+    }
+
+    // 计算日圆环颜色
+    val dayColor = when {
+        safeDayProgress <= 0.5f -> lerp(safeColor, warningColor, safeDayProgress * 2f)
+        else -> lerp(warningColor, dangerColor, (safeDayProgress - 0.5f) * 2f)
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
