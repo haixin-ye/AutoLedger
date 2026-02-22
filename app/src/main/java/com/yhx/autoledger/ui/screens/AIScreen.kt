@@ -6,10 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,31 +21,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,22 +49,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.yhx.autoledger.R
 import com.yhx.autoledger.models.BillPreview
 import com.yhx.autoledger.models.ChatMessage
-import com.yhx.autoledger.ui.components.bounceClick
+import com.yhx.autoledger.ui.components.AdvancedChatInput
+import com.yhx.autoledger.ui.components.BaseTransactionSheet
+import com.yhx.autoledger.ui.components.ChatAvatar
 import com.yhx.autoledger.ui.theme.AccentBlue
 import com.yhx.autoledger.viewmodel.AIViewModel
 import kotlinx.coroutines.launch
@@ -116,10 +101,23 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
     // ✨ 计算未读数量 (总消息数 - 已读消息数)
     val unreadCount = (messages.size - lastReadCount).coerceAtLeast(0)
 
+
+    // ✨ 新增核心逻辑：区分“初次进入/重新切回页面”和“停留在页面时来新消息”
+    var isInitialScrollDone by remember { mutableStateOf(false) }
+
     // ✨ 自动滚动机制：只要来新消息了，且用户本来就在底部，就丝滑滚到底部
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty() && isNearBottom) {
-            listState.animateScrollToItem(messages.size - 1)
+        if (messages.isNotEmpty()) {
+            if (!isInitialScrollDone) {
+                // 1. 如果是刚切到这个页面（或者刚从数据库加载出历史消息）
+                // 使用 scrollToItem 进行【无动画瞬间闪现】，防止用户看到列表往下滚的残影
+                listState.scrollToItem(messages.size - 1)
+                isInitialScrollDone = true
+            } else if (isNearBottom) {
+                // 2. 如果用户一直停留在该页面且处于底部，AI回复了新消息
+                // 使用 animateScrollToItem 进行【丝滑滚动】
+                listState.animateScrollToItem(messages.size - 1)
+            }
         }
     }
 
@@ -230,12 +228,41 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
             )
         }
 
-        // ✨ 修复 3：正确解析 editingState，完成修改更新
+        // ✨ 修复 3：正确解析 editingState，完成修改更
         editingState?.let { (msgId, preview) ->
-            EditAIBillSheet(
-                preview = preview,
+            // 将 "yyyy-MM-dd" 转换为时间戳
+            val format = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            val initialTimestamp = try {
+                format.parse(preview.date)?.time ?: System.currentTimeMillis()
+            } catch (e: Exception) {
+                System.currentTimeMillis()
+            }
+
+            BaseTransactionSheet(
+                isEditMode = true,
+                initialType = preview.type,
+                initialAmount = preview.amount,
+                initialCategory = preview.category,
+                initialIcon = preview.icon,
+                initialRemark = preview.note.ifBlank { "" },
+                initialTimestamp = initialTimestamp,
                 onDismiss = { editingState = null },
-                onSave = { updatedPreview ->
+                onDelete = null, // AI 预览账单阶段不需要删除按钮，直接关掉弹窗即可
+                onSave = { type, category, icon, amountDouble, remark, timestampLong ->
+                    // 1. 金额转回 String
+                    val amountStr = if (amountDouble % 1.0 == 0.0) amountDouble.toInt().toString() else amountDouble.toString()
+                    // 2. 时间戳转回 "yyyy-MM-dd"
+                    val updatedDateStr = format.format(java.util.Date(timestampLong))
+
+                    // 3. 组装新的 Preview 并传给 ViewModel
+                    val updatedPreview = preview.copy(
+                        type = type,
+                        category = category,
+                        icon = icon,
+                        amount = amountStr,
+                        note = remark,
+                        date = updatedDateStr
+                    )
                     viewModel.updateMessagePreview(msgId, updatedPreview)
                     editingState = null
                 }
@@ -490,299 +517,4 @@ fun DetailRow(label: String, value: String) {
     }
 }
 
-@Composable
-fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-            .fillMaxWidth()
-            .height(56.dp), // 稍微收紧一点高度，显得精致
-        color = Color.White,
-        shape = CircleShape,
-        // ✨ 高级感核心：纯白背景配上一层非常克制的弥散阴影
-        shadowElevation = 12.dp,
-        tonalElevation = 4.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 24.dp, end = 8.dp), // 左侧增加呼吸感，右侧留给发送按钮
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BasicTextField(
-                value = text,
-                onValueChange = onTextChange,
-                modifier = Modifier.weight(1f),
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    fontSize = 16.sp,
-                    color = Color(0xFF1D1D1F)
-                ),
-                decorationBox = { innerTextField ->
-                    if (text.isEmpty()) {
-                        Text(
-                            "输入语音或文字记一笔...",
-                            color = Color(0xFFC7C7CC),
-                            fontSize = 15.sp
-                        )
-                    }
-                    innerTextField()
-                }
-            )
 
-            // 发送按钮优化：平时微透明，有字时高亮
-            val isInputEmpty = text.trim().isEmpty()
-            IconButton(
-                onClick = onSend,
-                enabled = !isInputEmpty,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = if (isInputEmpty) Color(0xFFF2F2F7) else AccentBlue,
-                        shape = CircleShape
-                    )
-                    .bounceClick()
-            ) {
-                Icon(
-                    Icons.Default.Send,
-                    contentDescription = "Send",
-                    tint = if (isInputEmpty) Color(0xFFC7C7CC) else Color.White,
-                    modifier = Modifier.size(18.dp) // 图标稍微调小，显得精致
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditAIBillSheet(
-    preview: BillPreview,
-    onDismiss: () -> Unit,
-    onSave: (BillPreview) -> Unit
-) {
-    // 状态初始化
-    var transactionType by remember { mutableIntStateOf(preview.type) } // 0: 支出, 1: 收入
-    var amountText by remember { mutableStateOf(preview.amount) }
-    var noteText by remember { mutableStateOf(preview.note) }
-
-    // 分类定义（参考你的 ManualAddSheet）
-    val expenseCategories = listOf(
-        "餐饮" to "🍱", "交通" to "🚗", "购物" to "🛒",
-        "娱乐" to "🎮", "居住" to "🏠", "其他" to "⚙️"
-    )
-    val incomeCategories = listOf(
-        "工资" to "💰", "理财" to "📈", "兼职" to "💼",
-        "红包" to "🧧", "报销" to "🧾", "其他" to "💵"
-    )
-
-    val currentCategories = if (transactionType == 0) expenseCategories else incomeCategories
-    // 如果当前的分类不在当前类型的列表里，默认选第一个
-    var selectedCategory by remember(transactionType) {
-        mutableStateOf(if (currentCategories.any { it.first == preview.category }) preview.category else currentCategories[0].first)
-    }
-
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val symbolColor = if (transactionType == 0) AccentBlue else Color(0xFF4CAF50)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Color(0xFFF7F9FC), // 统一背景色
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        dragHandle = {
-            Box(Modifier.padding(top = 12.dp, bottom = 8.dp).size(40.dp, 5.dp).background(Color(0xFFE5E5EA), CircleShape))
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("微调 AI 提取的账单", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-
-            Spacer(Modifier.height(20.dp))
-
-            // 1. 类型切换 (参考 ManualAddSheet 风格)
-            Row(
-                modifier = Modifier
-                    .width(180.dp)
-                    .background(Color.Black.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-                    .padding(4.dp)
-            ) {
-                listOf("支出" to 0, "收入" to 1).forEach { (label, type) ->
-                    val isSelected = transactionType == type
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(if (isSelected) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
-                            .clickable { transactionType = type }
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(label, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color.Black else Color.Gray)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // 2. 金额输入区（高级感改版：大字展示）
-            Surface(color = Color.White, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(if (transactionType == 0) "- ¥" else "+ ¥", fontSize = 24.sp, fontWeight = FontWeight.Black, color = symbolColor)
-                    Spacer(Modifier.width(8.dp))
-                    BasicTextField(
-                        value = amountText,
-                        onValueChange = { amountText = it },
-                        textStyle = TextStyle(
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.Black
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // 3. 分类网格选择 (学习自 ManualAddSheet)
-            Text("选择分类", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.align(Alignment.Start).padding(start = 4.dp, bottom = 12.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth().height(150.dp) // 固定高度保证呼吸感
-            ) {
-                items(currentCategories) { (name, icon) ->
-                    val isSelected = selectedCategory == name
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { selectedCategory = name }
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (isSelected) symbolColor else Color.White,
-                            modifier = Modifier.size(48.dp),
-                            shadowElevation = if (isSelected) 4.dp else 0.dp
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(icon, fontSize = 22.sp)
-                            }
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(name, fontSize = 12.sp, color = if (isSelected) symbolColor else Color.Gray)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // 4. 备注输入框
-            PremiumTextField(value = noteText, onValueChange = { noteText = it }, label = "备注 (可选)")
-
-            Spacer(Modifier.height(28.dp))
-
-            // 5. 保存按钮
-            Button(
-                onClick = {
-                    val updatedPreview = preview.copy(
-                        amount = amountText,
-                        category = selectedCategory,
-                        type = transactionType,
-                        icon = currentCategories.find { it.first == selectedCategory }?.second ?: "📝",
-                        note = noteText
-                    )
-                    onSave(updatedPreview)
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = symbolColor),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("完成修改", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-// ✨ 新增：剥离出来的高级感无边框输入组件
-@Composable
-fun PremiumTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // 独立的 Label，悬浮在输入框左上方
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF8E8E93),
-            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
-        )
-
-        // 使用 BasicTextField 彻底摆脱系统默认的边框和下划线
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            keyboardOptions = keyboardOptions,
-            textStyle = androidx.compose.ui.text.TextStyle(
-                fontSize = 16.sp,
-                color = Color(0xFF1D1D1F),
-                fontWeight = FontWeight.Medium
-            ),
-            singleLine = true,
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFF2F2F7), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp), // 内部的呼吸感
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    innerTextField()
-                }
-            }
-        )
-    }
-}
-
-// ✨ 新增：专门渲染头像的组件
-@Composable
-fun ChatAvatar(isFromUser: Boolean) {
-    Surface(
-        shape = CircleShape,
-        color = if (isFromUser) Color(0xFFE3F2FD) else Color(0xFFFFF3E0), // 背景色区分
-        modifier = Modifier
-            .size(34.dp) // 头像统一大小
-            .shadow(2.dp, CircleShape) // 增加轻微的立体感
-            .border(1.dp, Color.White, CircleShape) // 白色描边，显得更精致
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-//             💡 TODO: 当你把真实的图片放进 res/drawable 后，把下面这段换成：
-            Image(
-                painter = painterResource(id = if (isFromUser) R.drawable.ic_user_avatar else R.drawable.ic_ai_avatar),
-                contentDescription = "Avatar",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
-            )
-
-            // 👇 在你换真实图片之前，先用系统自带的漂亮 Icon 顶替
-//            Icon(
-//                imageVector = if (isFromUser) Icons.Rounded.Person else Icons.Rounded.SmartToy,
-//                contentDescription = "Avatar",
-//                tint = if (isFromUser) AccentBlue else Color(0xFFFF9800),
-//                modifier = Modifier.size(24.dp)
-//            )
-        }
-    }
-}

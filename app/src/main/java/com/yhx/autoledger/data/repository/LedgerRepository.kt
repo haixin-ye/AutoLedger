@@ -31,6 +31,11 @@ class LedgerRepository @Inject constructor(
         ledgerDao.deleteLedger(ledger)
     }
 
+    // 批量删除
+    suspend fun deleteLedgersByIds(ids: List<Long>) {
+        ledgerDao.deleteLedgersByIds(ids)
+    }
+
     // 获取所有账单流（首页最近账单需要用到）
     fun getAllLedgersDesc(): Flow<List<LedgerEntity>> {
         return ledgerDao.getAllLedgersDesc()

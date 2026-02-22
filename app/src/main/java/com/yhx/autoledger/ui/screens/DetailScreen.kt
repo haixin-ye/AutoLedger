@@ -1,7 +1,6 @@
 package com.yhx.autoledger.ui.screens
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,8 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,21 +47,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yhx.autoledger.models.CategoryPercentage
 import com.yhx.autoledger.models.MonthlyStats
+import com.yhx.autoledger.ui.components.PremiumDonutChart
 import com.yhx.autoledger.ui.components.RefinedTransactionItem
 import com.yhx.autoledger.ui.components.TransactionData
+import com.yhx.autoledger.ui.components.YearMonthPickerDialog
 import com.yhx.autoledger.ui.components.bounceClick
+import com.yhx.autoledger.ui.components.getPremiumBaseColor
+import com.yhx.autoledger.ui.components.getPremiumBrush
 import com.yhx.autoledger.ui.theme.AccentBlue
 import com.yhx.autoledger.viewmodel.DailyRecord
 import com.yhx.autoledger.viewmodel.DetailViewModel
@@ -74,25 +71,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Calendar
 
 // 在文件顶部定义高级色板
-private val PremiumColors = listOf(
-    Pair(Color(0xFF84FAB0), Color(0xFF8FD3F4)), // 清新薄荷 -> 晴空蓝
-    Pair(Color(0xFFA18CD1), Color(0xFFFBC2EB)), // 梦幻紫 -> 浅樱粉
-    Pair(Color(0xFFFFECD2), Color(0xFFFCB69F)), // 活力蜜桃
-    Pair(Color(0xFF4FACFE), Color(0xFF00F2FE)), // 科技亮蓝
-    Pair(Color(0xFFF6D365), Color(0xFFFDA085)), // 暖阳橙黄
-    Pair(Color(0xFFE0C3FC), Color(0xFF8EC5FC)), // 晚霞灰紫
-    Pair(Color(0xFFFFAA85), Color(0xFFB3315F))  // 树莓红
-)
 
-fun getPremiumBrush(index: Int): Brush {
-    val colors = PremiumColors[index % PremiumColors.size]
-    return Brush.linearGradient(listOf(colors.first, colors.second))
-}
-
-// ✨ 新增：提取该渐变系列的主色调，供给下方的图标使用
-fun getPremiumBaseColor(index: Int): Color {
-    return PremiumColors[index % PremiumColors.size].first
-}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -114,104 +93,6 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
         baseMonth.plusMonths(pagerState.currentPage.toLong())
     }
 
-
-    @Composable
-    fun YearMonthPickerDialog(
-        initialMonth: YearMonth,
-        onConfirm: (YearMonth) -> Unit,
-        onDismiss: () -> Unit
-    ) {
-        // 记录弹窗内部独立的状态
-        var selectedYear by remember { mutableStateOf(initialMonth.year) }
-        var selectedMonth by remember { mutableStateOf(initialMonth.monthValue) }
-
-        Dialog(onDismissRequest = onDismiss) {
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = Color.White,
-                shadowElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // 1. 年份切换 Header
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { selectedYear-- }) {
-                            Icon(Icons.Default.ChevronLeft, contentDescription = "上一年")
-                        }
-                        Text(
-                            text = "$selectedYear 年",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color(0xFF2D3436)
-                        )
-                        IconButton(onClick = { selectedYear++ }) {
-                            Icon(Icons.Default.ChevronRight, contentDescription = "下一年")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 2. 12个月份网格
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(4), // 一行4个月，共3行
-                        modifier = Modifier.height(150.dp),
-                        userScrollEnabled = false,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(12) { index ->
-                            val month = index + 1
-                            val isSelected = month == selectedMonth
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) AccentBlue else Color(0xFFF0F4F8))
-                                    .clickable { selectedMonth = month }
-                                    .padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "${month}月",
-                                    fontSize = 14.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.White else Color(0xFF2D3436)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // 3. 底部操作按钮
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        androidx.compose.material3.TextButton(onClick = onDismiss) {
-                            Text("取消", color = Color.Gray)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        androidx.compose.material3.Button(
-                            onClick = { onConfirm(YearMonth.of(selectedYear, selectedMonth)) },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = AccentBlue),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("确定")
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // ✨ 真正的日期选择弹窗
     if (showMonthPicker) {
@@ -277,7 +158,11 @@ fun MainDetailContent(
     onMonthClick: () -> Unit,
     onCategoryClick: (CategoryPercentage, Int) -> Unit
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize().background(Color(0xFFF7F9FC))) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF7F9FC))
+    ) {
         // ✨ 需求 1：修改后的 TopBar
         item { DetailTopBar(month, onMonthClick) }
 
@@ -285,11 +170,14 @@ fun MainDetailContent(
             // ✨ 需求 3：增强滑动体验
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.height(300.dp).padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .height(300.dp)
+                    .padding(horizontal = 16.dp),
                 pageSpacing = 16.dp
             ) { page ->
                 // 计算当前页面的偏移量 (0.0 到 1.0)
-                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                val pageOffset =
+                    (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
 
                 // 根据偏移量计算缩放和透明度
                 val alpha = 1f - Math.abs(pageOffset).coerceIn(0f, 0.6f)
@@ -310,7 +198,12 @@ fun MainDetailContent(
 
         if (categories.isEmpty()) {
             item {
-                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text("本月暂无记录 🍃", color = Color.Gray, fontSize = 16.sp)
                 }
             }
@@ -324,125 +217,6 @@ fun MainDetailContent(
     }
 }
 
-//圆环图
-@Composable
-fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(280.dp)
-            .padding(vertical = 16.dp)
-    ) {
-        // ✨ 将尺寸放大一点，配合更粗的线条显得更饱满
-        Canvas(modifier = Modifier.size(220.dp)) {
-            val strokeWidthPx = 22.dp.toPx()
-
-            // 真实的绘制半径需要减去线宽的一半，防止弧线超出 Canvas 边界被裁切
-            val radius = (size.minDimension - strokeWidthPx) / 2f
-
-            // ----------------------------------------------------
-            // 🧠 导师级黑科技：利用圆周率精准计算 StrokeCap.Round 产生的溢出角度
-            // ----------------------------------------------------
-            val circumference = 2f * Math.PI.toFloat() * radius
-            val capAngle = (strokeWidthPx / circumference) * 360f
-
-            // 我们想要的视觉真实缝隙（2度）
-            val visualGapAngle = 2f
-
-            // 总偏移角度 = 圆角溢出角度 + 真实缝隙
-            val totalOffsetAngle = capAngle + visualGapAngle
-
-            // 1. 绘制底层的高级浅色轨道（增加图表的厚重感）
-            drawCircle(
-                color = Color(0xFFF1F3F6),
-                radius = radius,
-                style = Stroke(width = strokeWidthPx)
-            )
-
-            var currentStartAngle = -90f
-
-            // ✨ 判断如果只有一个数据，直接画一个完美的闭合整圆
-            if (data.size == 1) {
-                drawArc(
-                    brush = getPremiumBrush(0),
-                    startAngle = -90f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    style = Stroke(width = strokeWidthPx), // 不需要 Cap，因为首尾相接了
-                    topLeft = androidx.compose.ui.geometry.Offset(
-                        strokeWidthPx / 2f,
-                        strokeWidthPx / 2f
-                    ),
-                    size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f)
-                )
-            } else {
-                // 如果有多个数据，走原来的留缝隙逻辑
-                data.forEachIndexed { index, item ->
-                    val rawSweep = item.percentage * 360f
-                    if (rawSweep > totalOffsetAngle) {
-                        val actualSweep = rawSweep - totalOffsetAngle
-                        val actualStart = currentStartAngle + (totalOffsetAngle / 2f)
-                        drawArc(
-                            brush = getPremiumBrush(index),
-                            startAngle = actualStart,
-                            sweepAngle = actualSweep,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
-                            topLeft = androidx.compose.ui.geometry.Offset(
-                                strokeWidthPx / 2f,
-                                strokeWidthPx / 2f
-                            ),
-                            size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f)
-                        )
-                    } else if (rawSweep > 0f) {
-                        drawArc(
-                            brush = getPremiumBrush(index),
-                            startAngle = currentStartAngle + (visualGapAngle / 2f),
-                            sweepAngle = maxOf(0.5f, rawSweep - visualGapAngle),
-                            useCenter = false,
-                            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Butt),
-                            topLeft = androidx.compose.ui.geometry.Offset(
-                                strokeWidthPx / 2f,
-                                strokeWidthPx / 2f
-                            ),
-                            size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f)
-                        )
-                    }
-                    currentStartAngle += rawSweep
-                }
-            }
-        }
-
-        // 3. 极简优雅的中心排版
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "本月总支出",
-                fontSize = 12.sp,
-                color = Color(0xFF9CA3AF),
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.sp // 增加字间距，提升精致感
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = "¥",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1F2937),
-                    modifier = Modifier.padding(bottom = 4.dp, end = 2.dp)
-                )
-                Text(
-                    text = totalExpense,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFF1F2937),
-                    letterSpacing = (-0.5).sp // 数字微缩字间距，显得更紧凑有力
-                )
-            }
-        }
-    }
-}
 
 // ✨ 日历显示支出和收入
 @Composable
@@ -455,7 +229,11 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
     val prevMonth = month.minusMonths(1)
     val daysInPrevMonth = prevMonth.lengthOfMonth()
 
-    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+    ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             listOf("日", "一", "二", "三", "四", "五", "六").forEach {
                 Text(it, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color.Gray)
@@ -477,12 +255,18 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
 
             // 2. 填充本月日期
             val today = Calendar.getInstance()
-            val isThisMonth = month.year == today.get(Calendar.YEAR) && month.monthValue == (today.get(Calendar.MONTH) + 1)
+            val isThisMonth =
+                month.year == today.get(Calendar.YEAR) && month.monthValue == (today.get(Calendar.MONTH) + 1)
 
             items(daysInMonth) { index ->
                 val day = index + 1
                 val isToday = isThisMonth && day == today.get(Calendar.DAY_OF_MONTH)
-                CalendarDayCell(day = day, record = dailyMap[day], isToday = isToday, isCurrentMonth = true)
+                CalendarDayCell(
+                    day = day,
+                    record = dailyMap[day],
+                    isToday = isToday,
+                    isCurrentMonth = true
+                )
             }
 
             // 3. 填充下个月的起始日期（保证日历格子整齐，填充到 42 格即 6 行）
@@ -507,10 +291,13 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentM
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth().height(46.dp).background(
-            if (isToday) Color(0xFFDADDE0) else Color.Transparent,
-            RoundedCornerShape(8.dp)
-        )
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .background(
+                if (isToday) Color(0xFFDADDE0) else Color.Transparent,
+                RoundedCornerShape(8.dp)
+            )
     ) {
         Text(
             text = day.toString(),
@@ -525,7 +312,7 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentM
         if (isCurrentMonth && record != null && (record.expense > 0 || record.income > 0)) {
             val netAmount = record.income - record.expense
             Text(
-                text = "${if(netAmount >= 0) "+" else "-"}${Math.abs(netAmount).toInt()}",
+                text = "${if (netAmount >= 0) "+" else "-"}${Math.abs(netAmount).toInt()}",
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
                 color = (if (netAmount >= 0) Color(0xFF34A853) else Color(0xFFE53935)).copy(alpha = 0.7f),
@@ -540,7 +327,11 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentM
 
 
 @Composable
-fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> Unit) { // ✨ 这里加上 index: Int
+fun CategoryDetailRow(
+    category: CategoryPercentage,
+    index: Int,
+    onClick: () -> Unit
+) { // ✨ 这里加上 index: Int
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -588,7 +379,6 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
 }
 
 
-
 @Composable
 fun CategoryDetailView(
     category: CategoryPercentage,
@@ -600,9 +390,11 @@ fun CategoryDetailView(
         allLedgers.filter { it.categoryName == category.name }
     }
 
-    Column(Modifier
-        .fillMaxSize()
-        .background(Color(0xFFF7F9FC))) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF7F9FC))
+    ) {
 
         // ✨ 恢复 4：二级明细页的返回按钮和标题栏
         Row(
@@ -637,13 +429,22 @@ fun CategoryDetailView(
 @Composable
 fun DetailTopBar(month: YearMonth, onMonthClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(24.dp, 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp, 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("账单明细", fontSize = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+        Text(
+            "账单明细",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.weight(1f)
+        )
 
         Surface(
-            modifier = Modifier.bounceClick().clickable { onMonthClick() },
+            modifier = Modifier
+                .bounceClick()
+                .clickable { onMonthClick() },
             color = Color.White,
             shape = RoundedCornerShape(12.dp),
             shadowElevation = 2.dp

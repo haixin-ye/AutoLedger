@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -22,9 +23,15 @@ class HomeViewModel @Inject constructor(
     private val userPrefsRepository: UserPreferencesRepository
 ) : ViewModel() {
 
+
+    // 记录当前选中的账单 ID 集合
+    private val _selectedLedgerIds: MutableStateFlow<Set<Long>> = MutableStateFlow<Set<Long>>(
+        emptySet()
+    )
+
     // ✨ 核心状态：月份偏移量（0是本月，-1是上月...）
     val monthOffset = MutableStateFlow(0)
-
+    val selectedLedgerIds: StateFlow<Set<Long>> = _selectedLedgerIds.asStateFlow()
 
     // 💡 只要 monthOffset 发生改变，下面所有的流都会自动重新去数据库查询对应月份的数据！
     val recentLedgers: StateFlow<List<LedgerEntity>> = monthOffset.flatMapLatest { offset ->
@@ -33,11 +40,19 @@ class HomeViewModel @Inject constructor(
 
     // 【2】获取本月总支出 (type = 0)
     val currentMonthExpense: StateFlow<Double> = monthOffset.flatMapLatest { offset ->
-        repository.getTotalAmountBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 0)
+        repository.getTotalAmountBetween(
+            DateUtils.getMonthStart(offset),
+            DateUtils.getMonthEnd(offset),
+            0
+        )
             .map { it ?: 0.0 }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
     val currentMonthIncome: StateFlow<Double> = monthOffset.flatMapLatest { offset ->
-        repository.getTotalAmountBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 1)
+        repository.getTotalAmountBetween(
+            DateUtils.getMonthStart(offset),
+            DateUtils.getMonthEnd(offset),
+            1
+        )
             .map { it ?: 0.0 }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
@@ -98,5 +113,41 @@ class HomeViewModel @Inject constructor(
     // 删除账单
     fun deleteLedger(ledger: LedgerEntity) {
         viewModelScope.launch { repository.deleteLedger(ledger) }
+    }
+
+    // 长按或点击时切换选中状态
+    fun toggleSelection(ledgerId: Long) {
+        val current = _selectedLedgerIds.value.toMutableSet()
+        if (current.contains(ledgerId)) {
+            current.remove(ledgerId)
+        } else {
+            current.add(ledgerId)
+        }
+        _selectedLedgerIds.value = current
+    }
+
+    // 全选/取消全选
+    fun selectAll(ledgerIds: List<Long>) {
+        if (_selectedLedgerIds.value.size == ledgerIds.size) {
+            _selectedLedgerIds.value = emptySet() // 如果已经全选，则清空
+        } else {
+            _selectedLedgerIds.value = ledgerIds.toSet() // 否则全选
+        }
+    }
+
+    // 清空选择（退出多选模式）
+    fun clearSelection() {
+        _selectedLedgerIds.value = emptySet()
+    }
+
+    // 执行批量删除
+    fun deleteSelectedLedgers() {
+        val idsToDelete = _selectedLedgerIds.value.toList()
+        if (idsToDelete.isEmpty()) return
+
+        viewModelScope.launch {
+            repository.deleteLedgersByIds(idsToDelete)
+            clearSelection() // 删除完成后自动清空集合，退出多选模式
+        }
     }
 }

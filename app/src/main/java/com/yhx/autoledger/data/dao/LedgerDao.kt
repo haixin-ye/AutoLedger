@@ -18,6 +18,10 @@ interface LedgerDao {
     @Delete
     suspend fun deleteLedger(ledger: LedgerEntity)
 
+    // 1. 批量删除
+    @Query("DELETE FROM ledgers WHERE id IN (:ids)")
+    suspend fun deleteLedgersByIds(ids: List<Long>)
+
     // 2. 首页展示：获取所有账单（按时间倒序排列，最新的在最上面）
     @Query("SELECT * FROM ledgers ORDER BY timestamp DESC")
     fun getAllLedgersDesc(): Flow<List<LedgerEntity>>
