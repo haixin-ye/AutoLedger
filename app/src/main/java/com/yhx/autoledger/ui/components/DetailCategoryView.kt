@@ -1,5 +1,6 @@
 package com.yhx.autoledger.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -53,6 +54,12 @@ fun CategoryDetailView(
     onSaveLedger: (LedgerEntity) -> Unit,   // ✨ 接收保存回调
     onDeleteLedger: (LedgerEntity) -> Unit  // ✨ 接收删除回调
 ) {
+
+
+
+    BackHandler {
+        onBack() // 执行返回逻辑（即清空 DetailScreen 中的 selectedCategoryInfo）
+    }
     val categoryLedgers = remember(category, allLedgers) {
         allLedgers.filter { it.categoryName == category.name }
             .sortedByDescending { it.timestamp }
@@ -61,9 +68,13 @@ fun CategoryDetailView(
     val themeColor = getPremiumBaseColor(categoryIndex)
     var ledgerToEdit by remember { mutableStateOf<LedgerEntity?>(null) }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFFF7F9FC))) {
+    Column(Modifier
+        .fillMaxSize()
+        .background(Color(0xFFF7F9FC))) {
         Row(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
@@ -121,7 +132,8 @@ fun DetailedTransactionItem(ledger: LedgerEntity, themeColor: Color, onClick: ()
 
     // 读取备注信息
     val remarkStr = ledger.note ?: ""
-    val displayTitle = if (remarkStr.isNotBlank() && remarkStr != ledger.categoryName) remarkStr else ledger.categoryName
+    val displayTitle =
+        if (remarkStr.isNotBlank() && remarkStr != ledger.categoryName) remarkStr else ledger.categoryName
 
     Surface(
         modifier = Modifier

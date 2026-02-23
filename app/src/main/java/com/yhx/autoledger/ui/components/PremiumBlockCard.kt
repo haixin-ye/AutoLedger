@@ -75,7 +75,7 @@ fun DataOverviewSection(stats: MonthlyStats, budget: Double) {
         ) {
             Box(Modifier.size(3.dp, 14.dp).background(Color(0xFF8FD3F4), CircleShape))
             Spacer(Modifier.width(8.dp))
-            Text("数据总览", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+            Text("数据总览", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.Black)
         }
 
         // --- 2. 核心支出区 (主数据) ---

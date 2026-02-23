@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -37,7 +38,9 @@ fun MainBottomBar(
         color = Color.White.copy(alpha = 0.95f),
         tonalElevation = 8.dp,
         shadowElevation = 16.dp,
-        modifier = Modifier.clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+        modifier = Modifier
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .navigationBarsPadding()
     ) {
         // 弃用系统的 NavigationBar，改用 Row 彻底摆脱胶囊底色和系统限制
         Row(

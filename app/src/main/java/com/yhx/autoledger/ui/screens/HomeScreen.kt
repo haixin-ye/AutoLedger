@@ -83,13 +83,19 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val isCurrentMonth = (monthOffset == 0)
     val todayExpense = if (isCurrentMonth) {
         recentLedgers.filter {
-            it.type == 0 && SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) == todayStr
+            it.type == 0 && SimpleDateFormat(
+                "yyyy-MM-dd",
+                Locale.getDefault()
+            ).format(Date(it.timestamp)) == todayStr
         }.sumOf { it.amount }
-    } else { 0.0 }
+    } else {
+        0.0
+    }
 
     val historicalExpense = monthExpense - todayExpense
     val remainingDays = if (isCurrentMonth) (totalDays - currentDay + 1) else 1
-    val todayAllowance = if (remainingDays > 0) (budget - historicalExpense) / remainingDays else 0.0
+    val todayAllowance =
+        if (remainingDays > 0) (budget - historicalExpense) / remainingDays else 0.0
     val dailyAvailable = if (remainingDays > 0) (budget - monthExpense) / remainingDays else 0.0
 
     val monthProgress = if (budget > 0) (monthExpense / budget).toFloat() else 0f
@@ -281,7 +287,13 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (dailyIncome > 0) {
                                     Text(
-                                        text = "收 ¥${String.format(Locale.getDefault(), "%.2f", dailyIncome)}",
+                                        text = "收 ¥${
+                                            String.format(
+                                                Locale.getDefault(),
+                                                "%.2f",
+                                                dailyIncome
+                                            )
+                                        }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
 //                                        color = Color(0xFF5CA969)
@@ -290,17 +302,26 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                 }
                                 if (dailyExpense > 0) {
                                     Text(
-                                        text = "支 ¥${String.format(Locale.getDefault(), "%.2f", dailyExpense)}",
+                                        text = "支 ¥${
+                                            String.format(
+                                                Locale.getDefault(),
+                                                "%.2f",
+                                                dailyExpense
+                                            )
+                                        }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
 //                                        color = Color(0xFFD66969)
                                         color = Color.Black
-                                        )
+                                    )
                                 }
                             }
                         }
                     }
-                    items(items) { data ->
+                    items(
+                        items = items,
+                        key = { data -> data.originalLedger?.id ?: data.hashCode() } // ✨ 补充 key
+                    ) { data ->
                         val ledgerId = data.originalLedger?.id ?: -1L
                         val isSelected = selectedIds.contains(ledgerId)
 

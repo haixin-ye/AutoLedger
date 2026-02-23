@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,10 +26,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
 import com.yhx.autoledger.data.dao.CategoryDao
+import com.yhx.autoledger.ui.components.DoubleBackToExitHandler
 import com.yhx.autoledger.ui.components.MainBottomBar
 import com.yhx.autoledger.ui.components.ManualAddSheet
 import com.yhx.autoledger.ui.components.bounceClick
@@ -54,6 +58,19 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // ✨ 2. 抽掉系统默认的半透明黑色背景，设为完全透明！
+        window.statusBarColor = Color.Transparent.toArgb()
+        window.navigationBarColor = Color.Transparent.toArgb()
+
+        // ✨ 3. （极其关键）因为底色透明了，如果你的 App 背景是浅色/白色，
+        // 必须要让状态栏的时间、电量变成深色（黑色），否则会看不清！
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.isAppearanceLightStatusBars = true     // 顶部图标变黑
+        insetsController.isAppearanceLightNavigationBars = true // 底部小白条变黑（如果是手势导航）
+
+
         // 3. 临时测试代码：强行读取一次数据库，触发 onCreate 回调和预设数据注入
         lifecycleScope.launch {
             categoryDao.getAllCategories().collect { categories ->
@@ -63,6 +80,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AutoLedgerTheme {
+                //滑动两次退出。
+                DoubleBackToExitHandler()
                 // ✨ 1. 定义页面的顺序列表（作为 Pager 的数据源）
                 val tabOrder = remember {
                     listOf(Screen.Home, Screen.Detail, Screen.AI, Screen.Settings)
@@ -101,20 +120,33 @@ class MainActivity : ComponentActivity() {
                                 containerColor = AccentBlue,
                                 contentColor = Color.White,
                                 shape = CircleShape,
-                                modifier = Modifier.padding(bottom = 16.dp).bounceClick()
+                                modifier = Modifier
+                                    .padding(bottom = 16.dp)
+                                    .bounceClick()
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "手动记账", modifier = Modifier.size(28.dp))
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "手动记账",
+                                    modifier = Modifier.size(28.dp)
+                                )
                             }
                         }
                     },
                     containerColor = Color(0xFFF7F9FC)
                 ) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
+                    Box(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .consumeWindowInsets(innerPadding)
+                    ) {
 
                         // ✨ 4. 核心武器：HorizontalPager 完美接管手势与页面内容！
                         HorizontalPager(
                             state = pagerState,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            beyondBoundsPageCount = 2   //预加载左右2个页面
+//                            beyondBoundsPageCount = tabOrder.size   //预加载全部
+
                         ) { pageIndex ->
                             // 根据当前的页码，渲染对应的屏幕
                             when (tabOrder[pageIndex].route) {

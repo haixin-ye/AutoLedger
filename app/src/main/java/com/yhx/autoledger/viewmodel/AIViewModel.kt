@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.lang.reflect.Type
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
@@ -43,7 +44,7 @@ class AIViewModel @Inject constructor(
 
 ) : ViewModel() {
     private val userVipLevel: Int = 1// 0:免费版, 1:普通会员, 2:高级会员(带上下文)
-    private val context_length=6
+    private val context_length = 6
     private val apiKey = "Bearer sk-b93a79d60e6445f89a214968e9273d71"
 
     // ✨ 构造一个支持 Compose Color 的 Gson 解析器
@@ -80,26 +81,27 @@ class AIViewModel @Inject constructor(
     private val _availableCategories = MutableStateFlow<List<String>>(emptyList())
 
     init {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            // ✨ 1. 启动时从本地读取聊天记录
+            val historyJson = prefs.getString("chat_history", null)
+            if (historyJson != null) {
+                try {
+                    val type = object : TypeToken<List<ChatMessage>>() {}.type
+                    val history: List<ChatMessage> = gson.fromJson(historyJson, type)
 
-        // ✨ 1. 启动时从本地读取聊天记录
-        val historyJson = prefs.getString("chat_history", null)
-        if (historyJson != null) {
-            try {
-                val type = object : TypeToken<List<ChatMessage>>() {}.type
-                val history: List<ChatMessage> = gson.fromJson(historyJson, type)
-
-                // ✨ 重点：通过 map 重新映射一遍，确保 GSON 注入的 null 被修正为 emptyList
-                _messages.value = history.map {
-                    it.copy(billPreviews = it.billPreviews ?: emptyList())
+                    // ✨ 重点：通过 map 重新映射一遍，确保 GSON 注入的 null 被修正为 emptyList
+                    _messages.value = history.map {
+                        it.copy(billPreviews = it.billPreviews ?: emptyList())
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    // 解析失败（比如字段类型全变了），建议清空缓存
+                    prefs.edit { remove("chat_history") }
+                    loadDefaultWelcome()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // 解析失败（比如字段类型全变了），建议清空缓存
-                prefs.edit { remove("chat_history") }
+            } else {
                 loadDefaultWelcome()
             }
-        } else {
-            loadDefaultWelcome()
         }
 
         // ✨ 2. 核心魔法：只要 _messages 发生变化，就自动静默存入本地！
@@ -334,7 +336,7 @@ class AIViewModel @Inject constructor(
                 }
             }
         }
-        _messages.value += ChatMessage(
+        _messages.value + ChatMessage(
             content = replyText,
             isFromUser = false,
             billPreviews = billList
@@ -360,16 +362,16 @@ class AIViewModel @Inject constructor(
                 val parsedDate = format.parse(preview.date)
 
                 val finalTimestamp = if (parsedDate != null) {
-                    val currentCalendar = java.util.Calendar.getInstance()
-                    val hour = currentCalendar.get(java.util.Calendar.HOUR_OF_DAY)
-                    val minute = currentCalendar.get(java.util.Calendar.MINUTE)
-                    val second = currentCalendar.get(java.util.Calendar.SECOND)
+                    val currentCalendar = Calendar.getInstance()
+                    val hour = currentCalendar.get(Calendar.HOUR_OF_DAY)
+                    val minute = currentCalendar.get(Calendar.MINUTE)
+                    val second = currentCalendar.get(Calendar.SECOND)
 
-                    val targetCalendar = java.util.Calendar.getInstance()
+                    val targetCalendar = Calendar.getInstance()
                     targetCalendar.time = parsedDate
-                    targetCalendar.set(java.util.Calendar.HOUR_OF_DAY, hour)
-                    targetCalendar.set(java.util.Calendar.MINUTE, minute)
-                    targetCalendar.set(java.util.Calendar.SECOND, second)
+                    targetCalendar.set(Calendar.HOUR_OF_DAY, hour)
+                    targetCalendar.set(Calendar.MINUTE, minute)
+                    targetCalendar.set(Calendar.SECOND, second)
                     targetCalendar.timeInMillis
                 } else {
                     System.currentTimeMillis()

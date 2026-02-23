@@ -12,6 +12,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Detail : Screen("detail", "明细", Icons.Default.List)
     object AI : Screen("ai", "AI助手", Icons.Default.Face) // 或者是麦克风图标
     object Settings : Screen("settings", "我的", Icons.Default.Settings)
+
+//    // 传递 categoryName 和主题色 index
+//    object CategoryDetail : Screen("category_detail/{categoryName}/{colorIndex}", "分类详情", Icons.Default.List) {
+//        fun createRoute(categoryName: String, colorIndex: Int) = "category_detail/$categoryName/$colorIndex"
+//    }
 }
 
 val bottomNavItems = listOf(
