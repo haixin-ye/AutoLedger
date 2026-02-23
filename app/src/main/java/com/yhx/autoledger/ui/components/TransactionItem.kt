@@ -189,7 +189,7 @@ fun RefinedTransactionItem(
             Spacer(Modifier.width(8.dp))
 
             // 金额区域
-            val amountColor = if (data.amount.contains("+")) Color(0xFF4CAF50) else Color(0xFFD66969)
+            val amountColor = if (data.amount.contains("+")) Color(0xFF00B42A) else Color(0xFFDB1B1B)
             Text(
                 text = data.amount,
                 fontWeight = FontWeight.Black,

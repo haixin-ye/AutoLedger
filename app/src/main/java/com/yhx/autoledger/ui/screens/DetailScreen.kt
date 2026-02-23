@@ -4,10 +4,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -15,25 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,20 +43,20 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yhx.autoledger.models.CategoryPercentage
 import com.yhx.autoledger.models.MonthlyStats
+import com.yhx.autoledger.ui.components.CalendarGrid
+import com.yhx.autoledger.ui.components.CategoryDetailView
+import com.yhx.autoledger.ui.components.DailyTrendChart
+import com.yhx.autoledger.ui.components.DataOverviewSection
+import com.yhx.autoledger.ui.components.DetailTopBar
+import com.yhx.autoledger.ui.components.PremiumBlockCard
 import com.yhx.autoledger.ui.components.PremiumDonutChart
-import com.yhx.autoledger.ui.components.RefinedTransactionItem
-import com.yhx.autoledger.ui.components.TransactionData
 import com.yhx.autoledger.ui.components.YearMonthPickerDialog
 import com.yhx.autoledger.ui.components.bounceClick
-import com.yhx.autoledger.ui.components.getPremiumBaseColor
 import com.yhx.autoledger.ui.components.getPremiumBrush
-import com.yhx.autoledger.ui.theme.AccentBlue
 import com.yhx.autoledger.viewmodel.DailyRecord
 import com.yhx.autoledger.viewmodel.DetailViewModel
 import kotlinx.coroutines.launch
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.util.Calendar
 
 // 在文件顶部定义高级色板
 
@@ -139,10 +127,14 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
             )
         } else {
             CategoryDetailView(
-                info.first,
-                info.second,
-                currentMonthLedgers
-            ) { selectedCategoryInfo = null }
+                category = info.first,
+                categoryIndex = info.second, // 或者您之前传的 themeColor，保持一致即可
+                allLedgers = currentMonthLedgers,
+                onBack = { selectedCategoryInfo = null },
+                // ✨ 补充传入保存和删除的回调
+                onSaveLedger = { updatedLedger -> viewModel.updateLedger(updatedLedger) },
+                onDeleteLedger = { deletedLedger -> viewModel.deleteLedger(deletedLedger) }
+            )
         }
     }
 }
@@ -156,8 +148,12 @@ fun MainDetailContent(
     dailyMap: Map<Int, DailyRecord>,
     categories: List<CategoryPercentage>,
     onMonthClick: () -> Unit,
-    onCategoryClick: (CategoryPercentage, Int) -> Unit
+    onCategoryClick: (CategoryPercentage, Int) -> Unit,
+    viewModel: DetailViewModel = hiltViewModel() // 注入 viewModel 拿到预算
 ) {
+    // ✨ 观察真实预算
+    val budget by viewModel.monthlyBudget.collectAsState()
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -194,8 +190,24 @@ fun MainDetailContent(
             }
         }
 
-        item { DataOverviewSection(stats) }
+        // --- 模块 1：数据总览模块 ---
+        item {
+            PremiumBlockCard {
+                // ✨ 传入 stats 和 观察到的 realBudget
+                DataOverviewSection(stats = stats, budget = budget)
+            }
+        }
 
+        // --- 模块 2：消费趋势模块 ---
+        item {
+            // 给两个模块之间增加一个 Spacer，或者利用 PremiumBlockCard 原有的 padding
+            // 确保这里调用了趋势图
+            PremiumBlockCard {
+                DailyTrendChart(month, dailyMap, budget)
+            }
+        }
+
+        //圆环图+分类明细区域
         if (categories.isEmpty()) {
             item {
                 Box(
@@ -218,126 +230,17 @@ fun MainDetailContent(
 }
 
 
-// ✨ 日历显示支出和收入
 @Composable
-fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
-    // 这里的 1 代表周一，如果你的日历是以周日开头，需要处理这个偏移
-    val firstDayOfWeek = month.atDay(1).dayOfWeek.value % 7
-    val daysInMonth = month.lengthOfMonth()
-
-    // ✨ 需求 2：计算补全日期
-    val prevMonth = month.minusMonths(1)
-    val daysInPrevMonth = prevMonth.lengthOfMonth()
-
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-            listOf("日", "一", "二", "三", "四", "五", "六").forEach {
-                Text(it, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color.Gray)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            modifier = Modifier.height(280.dp),
-            userScrollEnabled = false,
-            verticalArrangement = Arrangement.spacedBy(7.dp)
-        ) {
-            // 1. 填充上个月的末尾日期
-            items(firstDayOfWeek) { index ->
-                val day = daysInPrevMonth - (firstDayOfWeek - index - 1)
-                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false)
-            }
-
-            // 2. 填充本月日期
-            val today = Calendar.getInstance()
-            val isThisMonth =
-                month.year == today.get(Calendar.YEAR) && month.monthValue == (today.get(Calendar.MONTH) + 1)
-
-            items(daysInMonth) { index ->
-                val day = index + 1
-                val isToday = isThisMonth && day == today.get(Calendar.DAY_OF_MONTH)
-                CalendarDayCell(
-                    day = day,
-                    record = dailyMap[day],
-                    isToday = isToday,
-                    isCurrentMonth = true
-                )
-            }
-
-            // 3. 填充下个月的起始日期（保证日历格子整齐，填充到 42 格即 6 行）
-            val remainingCells = 42 - (firstDayOfWeek + daysInMonth)
-            items(remainingCells) { index ->
-                val day = index + 1
-                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false)
-            }
-        }
-    }
-}
-
-@Composable
-fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentMonth: Boolean) {
-    // ✨ 需求 2：非本月日期设为半透明灰色
-    val textColor = if (isCurrentMonth) {
-        if (isToday) Color(0xFF1976D2) else Color(0xFF2D3436)
-    } else {
-        Color.Gray.copy(alpha = 0.3f)
-    }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(46.dp)
-            .background(
-                if (isToday) Color(0xFFDADDE0) else Color.Transparent,
-                RoundedCornerShape(8.dp)
-            )
-    ) {
-        Text(
-            text = day.toString(),
-            fontSize = 14.sp,
-            fontWeight = if (isToday) FontWeight.Black else FontWeight.Medium,
-            color = textColor
-        )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        /// 仅本月且有数据时显示
-        if (isCurrentMonth && record != null && (record.expense > 0 || record.income > 0)) {
-            val netAmount = record.income - record.expense
-            Text(
-                text = "${if (netAmount >= 0) "+" else "-"}${Math.abs(netAmount).toInt()}",
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Bold,
-                color = (if (netAmount >= 0) Color(0xFF34A853) else Color(0xFFE53935)).copy(alpha = 0.7f),
-                maxLines = 1
-            )
-        } else {
-            // 占位空间也要缩小
-            Spacer(modifier = Modifier.height(9.dp))
-        }
-    }
-}
-
-
-@Composable
-fun CategoryDetailRow(
-    category: CategoryPercentage,
-    index: Int,
-    onClick: () -> Unit
-) { // ✨ 这里加上 index: Int
+fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .bounceClick()
-            .clickable { onClick() },
+            .bounceClick() // 保留您自定义的高级物理弹簧效果
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null // ✨ 核心：彻底屏蔽系统的水波纹选择特效
+            ) { onClick() },
         color = Color.White,
         shape = RoundedCornerShape(20.dp),
         shadowElevation = 1.dp
@@ -350,9 +253,7 @@ fun CategoryDetailRow(
                 Text("¥${category.amount}", fontWeight = FontWeight.Black)
             }
             Spacer(Modifier.height(8.dp))
-            // 比例条可视化
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // 手写渐变进度条
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -364,7 +265,7 @@ fun CategoryDetailRow(
                         modifier = Modifier
                             .fillMaxWidth(category.percentage)
                             .fillMaxHeight()
-                            .background(getPremiumBrush(index)) // ✨ 这里就能正确识别到 index 了！
+                            .background(getPremiumBrush(index))
                     )
                 }
                 Spacer(Modifier.width(12.dp))
@@ -379,122 +280,7 @@ fun CategoryDetailRow(
 }
 
 
-@Composable
-fun CategoryDetailView(
-    category: CategoryPercentage,
-    categoryIndex: Int,
-    allLedgers: List<com.yhx.autoledger.data.entity.LedgerEntity>,
-    onBack: () -> Unit
-) {
-    val categoryLedgers = remember(category, allLedgers) {
-        allLedgers.filter { it.categoryName == category.name }
-    }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF7F9FC))
-    ) {
-
-        // ✨ 恢复 4：二级明细页的返回按钮和标题栏
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-            }
-            Text("${category.name} 明细", fontWeight = FontWeight.Black, fontSize = 18.sp)
-        }
-
-        LazyColumn(contentPadding = PaddingValues(16.dp)) {
-            items(categoryLedgers) { ledger ->
-                RefinedTransactionItem(
-                    data = TransactionData(
-                        title = ledger.categoryName,
-                        icon = ledger.categoryIcon ?: "🏷️",
-                        amount = "- ¥${String.format("%.2f", ledger.amount)}",
-                        color = getPremiumBaseColor(categoryIndex),
-                        originalLedger = ledger
-                    ),
-                    onClick = {}
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DetailTopBar(month: YearMonth, onMonthClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp, 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            "账单明细",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.weight(1f)
-        )
-
-        Surface(
-            modifier = Modifier
-                .bounceClick()
-                .clickable { onMonthClick() },
-            color = Color.White,
-            shape = RoundedCornerShape(12.dp),
-            shadowElevation = 2.dp
-        ) {
-            Row(
-                Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    month.format(DateTimeFormatter.ofPattern("yyyy年 MM月")),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.width(4.dp))
-                // ✨ 需求 1：改为向下箭头，表示可点击下拉
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = AccentBlue
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DataOverviewSection(stats: MonthlyStats) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(Modifier.padding(20.dp)) {
-            Text("数据总览", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth()) {
-                StatItem("支出", stats.totalExpense, Modifier.weight(1f))
-                StatItem("收入", stats.totalIncome, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth()) {
-                StatItem("结余", stats.balance, Modifier.weight(1f))
-                StatItem("日均支出", stats.dailyAvg, Modifier.weight(1f))
-            }
-        }
-    }
-}
 
 @Composable
 fun StatItem(label: String, value: String, modifier: Modifier) {

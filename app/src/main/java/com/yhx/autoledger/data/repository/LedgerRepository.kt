@@ -26,6 +26,11 @@ class LedgerRepository @Inject constructor(
         ledgerDao.insertLedger(ledger)
     }
 
+    // ✨ 补上这个缺失的更新方法！
+    suspend fun updateLedger(ledger: LedgerEntity) {
+        ledgerDao.updateLedger(ledger)
+    }
+
     // 删除一笔账（侧滑删除时调用）
     suspend fun deleteLedger(ledger: LedgerEntity) {
         ledgerDao.deleteLedger(ledger)

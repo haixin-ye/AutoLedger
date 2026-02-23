@@ -1,30 +1,16 @@
 package com.yhx.autoledger.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yhx.autoledger.data.entity.LedgerEntity
+import com.yhx.autoledger.ui.components.BatchDeleteBotton
 import com.yhx.autoledger.ui.components.BudgetSettingSheet
 import com.yhx.autoledger.ui.components.DoubleCircleGauges
 import com.yhx.autoledger.ui.components.EditLedgerSheet
@@ -79,9 +66,13 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     var showBudgetSheet by remember { mutableStateOf(false) }
 
     val selectedIds by viewModel.selectedLedgerIds.collectAsState()
-    val isSelectionMode = selectedIds.isNotEmpty()
 
+    // ✨ 核心修改 1：将多选模式变成独立的状态，不再和 selectedIds 强绑定
+    var isSelectionMode by remember { mutableStateOf(false) }
+
+    // ✨ 核心修改 2：拦截返回键，手动退出多选模式并清空数据
     BackHandler(enabled = isSelectionMode) {
+        isSelectionMode = false
         viewModel.clearSelection()
     }
 
@@ -92,19 +83,13 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val isCurrentMonth = (monthOffset == 0)
     val todayExpense = if (isCurrentMonth) {
         recentLedgers.filter {
-            it.type == 0 && SimpleDateFormat(
-                "yyyy-MM-dd",
-                Locale.getDefault()
-            ).format(Date(it.timestamp)) == todayStr
+            it.type == 0 && SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) == todayStr
         }.sumOf { it.amount }
-    } else {
-        0.0
-    }
+    } else { 0.0 }
 
     val historicalExpense = monthExpense - todayExpense
     val remainingDays = if (isCurrentMonth) (totalDays - currentDay + 1) else 1
-    val todayAllowance =
-        if (remainingDays > 0) (budget - historicalExpense) / remainingDays else 0.0
+    val todayAllowance = if (remainingDays > 0) (budget - historicalExpense) / remainingDays else 0.0
     val dailyAvailable = if (remainingDays > 0) (budget - monthExpense) / remainingDays else 0.0
 
     val monthProgress = if (budget > 0) (monthExpense / budget).toFloat() else 0f
@@ -158,109 +143,48 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         containerColor = Color.Transparent,
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            AnimatedVisibility(
-                visible = isSelectionMode,
-                enter = slideInVertically(initialOffsetY = { it * 2 }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it * 2 }) + fadeOut()
-            ) {
-                // ✨ 升级版：深色高级双功能控制胶囊
-                val isAllSelected =
-                    recentLedgers.isNotEmpty() && selectedIds.size == recentLedgers.size
+            val isAllSelected = recentLedgers.isNotEmpty() && selectedIds.size == recentLedgers.size
 
-                androidx.compose.material3.Surface(
-                    shape = RoundedCornerShape(28.dp),
-                    color = Color(0xFF2C2C2E), // 苹果风高级深灰
-                    shadowElevation = 12.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(
-                            start = 24.dp,
-                            end = 8.dp,
-                            top = 8.dp,
-                            bottom = 8.dp
-                        ),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 左侧：全选/取消全选区
-                        Row(
-                            modifier = Modifier
-                                .clickable(
-                                    // 移除点击涟漪，或者你可以用 bounceClick
-                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    viewModel.selectAll(recentLedgers.map { it.id })
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SelectAll,
-                                contentDescription = "全选",
-                                tint = if (isAllSelected) Color(0xFF8FD3F4) else Color.White, // 全选后图标变色反馈
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = if (isAllSelected) "取消" else "全选",
-                                color = if (isAllSelected) Color(0xFF8FD3F4) else Color.White,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 15.sp
-                            )
-                        }
-
-                        // 中间：柔和的分割线
-                        Spacer(Modifier.width(16.dp))
-                        Box(Modifier
-                            .width(1.dp)
-                            .height(20.dp)
-                            .background(Color(0xFF48484A)))
-                        Spacer(Modifier.width(16.dp))
-
-                        // 右侧：红色删除区
-                        androidx.compose.material3.Button(
-                            onClick = { viewModel.deleteSelectedLedgers() },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFFF3B30)
-                            ),
-                            shape = RoundedCornerShape(20.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                horizontal = 16.dp,
-                                vertical = 0.dp
-                            ),
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.DeleteOutline,
-                                contentDescription = "删除",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                "删除 ${selectedIds.size}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
+            // 引入我们刚刚抽取的胶囊组件
+            BatchDeleteBotton(
+                isVisible = isSelectionMode, // 由独立状态控制
+                isAllSelected = isAllSelected,
+                selectedCount = selectedIds.size,
+                onSelectAllToggle = {
+                    // 全选/取消全选的逻辑在 ViewModel 中，执行后不会改变 isSelectionMode
+                    viewModel.selectAll(recentLedgers.map { it.id })
+                },
+                onDeleteClick = {
+                    // ✨ 只有在选中数量大于 0 时才执行删除
+                    if (selectedIds.isNotEmpty()) {
+                        viewModel.deleteSelectedLedgers()
+                        isSelectionMode = false // 删除完毕后，优雅退出多选模式
                     }
                 }
-            }
+            )
         }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                // ✨ 修复 2：手势拦截。点击任何非账单卡片的空白处，直接清空选择！
+                // ✨ 注意：这里删除了原来的 .padding(paddingValues)
                 .pointerInput(isSelectionMode) {
                     if (isSelectionMode) {
                         detectTapGestures(
                             onTap = {
+                                isSelectionMode = false
                                 viewModel.clearSelection()
                             }
                         )
                     }
-                }
-                .padding(paddingValues)
+                },
+            // ✨ 核心修复：使用 contentPadding 动态增加底部留白
+            contentPadding = PaddingValues(
+                top = paddingValues.calculateTopPadding(),
+                // 如果处于多选模式，底部额外增加 88.dp 的空间（刚好是一个胶囊的高度 + 呼吸空间）
+                // 正常模式下保留基础的 24.dp 留白，让页面底部不至于太拥挤
+                bottom = paddingValues.calculateBottomPadding() + if (isSelectionMode) 88.dp else 24.dp
+            )
         ) {
 
             item {
@@ -299,8 +223,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     income = String.format(Locale.getDefault(), "%.2f", monthIncome),
                     balance = String.format(Locale.getDefault(), "%.2f", balance),
                     onClick = {
-                        // ✨ 细节优化：如果在多选模式下点到了资产卡片，也是执行取消多选，而不是弹预算设置
                         if (isSelectionMode) {
+                            isSelectionMode = false
                             viewModel.clearSelection()
                         } else {
                             showBudgetSheet = true
@@ -334,59 +258,44 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             } else {
                 groupedRecords.forEach { (date, items) ->
                     item {
-                        // ✨ 动态计算该日期的总支出和总收入
+                        // 包含收支统计的日期头部
                         val dailyExpense = items.filter { it.originalLedger?.type == 0 }
                             .sumOf { Math.abs(it.originalLedger?.amount ?: 0.0) }
                         val dailyIncome = items.filter { it.originalLedger?.type == 1 }
                             .sumOf { Math.abs(it.originalLedger?.amount ?: 0.0) }
 
-                        // ✨ 使用 Row 布局，将日期放左边，统计放右边
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 24.dp)
                                 .padding(top = 24.dp, bottom = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom // 底部对齐，视觉更平稳
+                            verticalAlignment = Alignment.Bottom
                         ) {
-                            // 左侧：日期与星期
                             Text(
                                 text = date,
                                 style = MaterialTheme.typography.labelLarge,
                                 color = Color.Gray
                             )
 
-                            // 右侧：收支汇总
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (dailyIncome > 0) {
                                     Text(
-                                        text = "收 ¥${
-                                            String.format(
-                                                Locale.getDefault(),
-                                                "%.2f",
-                                                dailyIncome
-                                            )
-                                        }",
+                                        text = "收 ¥${String.format(Locale.getDefault(), "%.2f", dailyIncome)}",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-//                                        color = Color(0xFF5CA969) // 🌿 柔和自然的草绿色
+//                                        color = Color(0xFF5CA969)
                                         color = Color.Black
                                     )
                                 }
                                 if (dailyExpense > 0) {
                                     Text(
-                                        text = "支 ¥${
-                                            String.format(
-                                                Locale.getDefault(),
-                                                "%.2f",
-                                                dailyExpense
-                                            )
-                                        }",
+                                        text = "支 ¥${String.format(Locale.getDefault(), "%.2f", dailyExpense)}",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-//                                        color = Color(0xFFD66969) // 🥀 优雅不刺眼的豆沙红
+//                                        color = Color(0xFFD66969)
                                         color = Color.Black
-                                    )
+                                        )
                                 }
                             }
                         }
@@ -398,10 +307,15 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         RefinedTransactionItem(
                             data = data,
                             isSelected = isSelected,
-                            isSelectionMode = isSelectionMode, // ✨ 修复 1：补上致命的参数传递！
+                            isSelectionMode = isSelectionMode,
                             onLongClick = {
                                 if (ledgerId != -1L) {
-                                    viewModel.toggleSelection(ledgerId)
+                                    isSelectionMode = true // ✨ 核心修改 4：长按强制进入多选模式
+
+                                    // 确保长按的条目被选中（避免原本选中时被反选）
+                                    if (!selectedIds.contains(ledgerId)) {
+                                        viewModel.toggleSelection(ledgerId)
+                                    }
                                 }
                             },
                             onClick = {

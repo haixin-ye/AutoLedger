@@ -32,75 +32,132 @@ import androidx.compose.ui.unit.sp
 fun DoubleCircleGauges(
     monthProgress: Float,
     dayProgress: Float,
-    // ✨ 新增参数：接收真实花费和预算数据
     monthExpense: Double = 0.0,
     monthBudget: Double = 0.0,
     dayExpense: Double = 0.0,
-    dayBudget: Double = 0.0
+    dayBudget: Double = 0.0,
+
+    // ✨ 新增：是否是“精简/预览”模式 (给 BudgetSettingSheet 用)
+    isPreviewMode: Boolean = false,
+
+    // ✨ 新增：自定义日环中心文字 (用来显示日均可用金额 ¥xxx)
+    customDayCenterText: String? = null
 ) {
-    // 确保进度在 0~1 之间，防止颜色计算越界
     val safeMonthProgress = monthProgress.coerceIn(0f, 1f)
     val safeDayProgress = dayProgress.coerceIn(0f, 1f)
 
-    // ✨ 定义三色标准
     val safeColor = Color(0xFF2ED573)    // 活力绿
     val warningColor = Color(0xFFFFC107) // 警告黄
     val dangerColor = Color(0xFFFF4757)  // 西瓜红
 
-    // 计算月圆环颜色
+    // 月份颜色逻辑
     val monthColor = when {
-        safeMonthProgress <= 0.5f -> lerp(safeColor, warningColor, safeMonthProgress * 2f)
-        else -> lerp(warningColor, dangerColor, (safeMonthProgress - 0.5f) * 2f)
+        safeMonthProgress <= 0.5f -> safeColor
+        safeMonthProgress <= 0.75f -> {
+            val t = (safeMonthProgress - 0.5f) / 0.25f
+            lerp(safeColor, warningColor, t)
+        }
+
+        else -> {
+            val t = (safeMonthProgress - 0.75f) / 0.25f
+            lerp(warningColor, dangerColor, t)
+        }
     }
 
-    // 计算日圆环颜色
+// 天数颜色逻辑
     val dayColor = when {
-        safeDayProgress <= 0.5f -> lerp(safeColor, warningColor, safeDayProgress * 2f)
-        else -> lerp(warningColor, dangerColor, (safeDayProgress - 0.5f) * 2f)
+        safeDayProgress <= 0.5f -> safeColor
+        safeDayProgress <= 0.75f -> {
+            val t = (safeDayProgress - 0.5f) / 0.25f
+            lerp(safeColor, warningColor, t)
+        }
+
+        else -> {
+            val t = (safeDayProgress - 0.75f) / 0.25f
+            lerp(warningColor, dangerColor, t)
+        }
     }
+
+    // 根据模式调整圆环尺寸
+    val circleSize = if (isPreviewMode) 100.dp else 110.dp
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         // ========== 左侧：月预算仪表盘 ==========
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(110.dp)) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(circleSize)) {
                 CircularProgressIndicator(
                     progress = { safeMonthProgress },
                     modifier = Modifier.fillMaxSize(),
-                    color = monthColor, // 应用渐变色
+                    color = monthColor,
                     strokeWidth = 8.dp,
                     trackColor = Color.LightGray.copy(alpha = 0.3f),
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${(safeMonthProgress * 100).toInt()}%", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = monthColor)
-                    Text("月预算已用", fontSize = 10.sp, color = Color.Gray)
+                    Text(
+                        text = "${(safeMonthProgress * 100).toInt()}%",
+                        fontSize = if (isPreviewMode) 18.sp else 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = monthColor
+                    )
+                    // 预览模式下不显示这行小字
+                    if (!isPreviewMode) {
+                        Text("月预算已用", fontSize = 10.sp, color = Color.Gray)
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
-            // ✨ 底部数据明细：花费 / 总额
-            Text("${monthExpense.toInt()} / ${monthBudget.toInt()}", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            // 底部文字动态切换
+            if (isPreviewMode) {
+                Text("月预算", color = Color.Gray, fontSize = 12.sp)
+            } else {
+                Text(
+                    "${monthExpense.toInt()} / ${monthBudget.toInt()}",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         // ========== 右侧：日限额仪表盘 ==========
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(110.dp)) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(circleSize)) {
                 CircularProgressIndicator(
                     progress = { safeDayProgress },
                     modifier = Modifier.fillMaxSize(),
-                    color = dayColor, // 应用渐变色
+                    color = dayColor, // ✨ 正确应用动态色！
                     strokeWidth = 8.dp,
                     trackColor = Color.LightGray.copy(alpha = 0.3f),
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${(safeDayProgress * 100).toInt()}%", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = dayColor)
-                    Text("日限额已用", fontSize = 10.sp, color = Color.Gray)
+                    val textToShow = customDayCenterText ?: "${(safeDayProgress * 100).toInt()}%"
+                    Text(
+                        text = textToShow,
+                        fontSize = if (isPreviewMode) 18.sp else 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = dayColor
+                    )
+                    if (!isPreviewMode) {
+                        Text("日限额已用", fontSize = 10.sp, color = Color.Gray)
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
-            // ✨ 底部数据明细：花费 / 每日限额
-            Text("${dayExpense.toInt()} / ${dayBudget.toInt()}", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            if (isPreviewMode) {
+                Text("日均可用", color = Color.Gray, fontSize = 12.sp)
+            } else {
+                Text(
+                    "${dayExpense.toInt()} / ${dayBudget.toInt()}",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
@@ -130,7 +187,11 @@ fun AnimatedCircleItem(label: String, targetProgress: Float, color: Color) {
                 strokeWidth = 10.dp,
                 strokeCap = StrokeCap.Round,
             )
-            Text("${(progress.value * 100).toInt()}%", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                "${(progress.value * 100).toInt()}%",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
         }
         Spacer(Modifier.height(8.dp))
         Text(label, fontSize = 12.sp, color = Color.Gray)

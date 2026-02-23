@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.yhx.autoledger.data.entity.LedgerEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -17,6 +18,10 @@ interface LedgerDao {
 
     @Delete
     suspend fun deleteLedger(ledger: LedgerEntity)
+
+    //更新Dao
+    @Update
+    suspend fun updateLedger(ledger: LedgerEntity)
 
     // 1. 批量删除
     @Query("DELETE FROM ledgers WHERE id IN (:ids)")

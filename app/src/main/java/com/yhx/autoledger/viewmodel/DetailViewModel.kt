@@ -1,14 +1,17 @@
 package com.yhx.autoledger.viewmodel
 
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yhx.autoledger.data.entity.LedgerEntity
 import com.yhx.autoledger.data.repository.LedgerRepository
+import com.yhx.autoledger.data.repository.UserPreferencesRepository
 import com.yhx.autoledger.models.CategoryPercentage
 import com.yhx.autoledger.models.MonthlyStats
 import com.yhx.autoledger.utils.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +19,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.time.YearMonth
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -28,8 +33,21 @@ data class DailyRecord(
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    private val repository: LedgerRepository
+    private val repository: LedgerRepository,
+    private val userPrefs: UserPreferencesRepository
 ) : ViewModel() {
+
+    /// ✨ 计算当前月份的 Key (例如 "202405")
+    private val currentYearMonthKey: Flow<String> = snapshotFlow { monthOffset.value }
+        .map { offset ->
+            val date = YearMonth.now().plusMonths(offset.toLong())
+            "${date.year}${String.format("%02d", date.monthValue)}"
+        }
+
+    // ✨ 核心：根据月份 Key 动态获取真实预算
+    val monthlyBudget: StateFlow<Double> = currentYearMonthKey
+        .flatMapLatest { key -> userPrefs.getMonthlyBudget(key) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5000.0)
 
     // ✨ 核心状态：月份偏移量（与 HomeViewModel 保持一致）
     val monthOffset = MutableStateFlow(0)
@@ -131,5 +149,19 @@ class DetailViewModel @Inject constructor(
             Color(0xFF8D6E63)  // Brown
         )
         return colors[index % colors.size]
+    }
+
+    // ✨ 更新账单
+    fun updateLedger(ledger: LedgerEntity) {
+        viewModelScope.launch {
+            repository.updateLedger(ledger)
+        }
+    }
+
+    // ✨ 删除账单
+    fun deleteLedger(ledger: LedgerEntity) {
+        viewModelScope.launch {
+            repository.deleteLedger(ledger)
+        }
     }
 }

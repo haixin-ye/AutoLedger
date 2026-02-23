@@ -1,6 +1,7 @@
 package com.yhx.autoledger.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -31,7 +32,6 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,56 +72,74 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var inputText by remember { mutableStateOf("") }
-    // ✨ 记录当前正在被编辑的消息，如果为 null 则不显示弹窗
     var editingState by remember { mutableStateOf<Pair<String, BillPreview>?>(null) }
 
-    // ✨ 列表状态与协程
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
-
-    // ✨ 2. 智能判断：用户目前是否停留在最新消息区域 (最后 3 条内视作底部)
     val isNearBottom by remember {
         derivedStateOf {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisible >= messages.size - 3
+            lastVisible >= (messages.size - 3).coerceAtLeast(0)
         }
     }
 
-    // ✨ 记录用户最后一次在底部时，看到了几条消息
     var lastReadCount by remember { mutableIntStateOf(messages.size) }
 
-    // ✨ 状态同步：只要用户滑到了底部，就把“已读数量”更新为当前的总消息数
     LaunchedEffect(isNearBottom, messages.size) {
         if (isNearBottom) {
             lastReadCount = messages.size
         }
     }
 
-    // ✨ 计算未读数量 (总消息数 - 已读消息数)
     val unreadCount = (messages.size - lastReadCount).coerceAtLeast(0)
 
-
-    // ✨ 新增核心逻辑：区分“初次进入/重新切回页面”和“停留在页面时来新消息”
     var isInitialScrollDone by remember { mutableStateOf(false) }
 
-    // ✨ 自动滚动机制：只要来新消息了，且用户本来就在底部，就丝滑滚到底部
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             if (!isInitialScrollDone) {
-                // 1. 如果是刚切到这个页面（或者刚从数据库加载出历史消息）
-                // 使用 scrollToItem 进行【无动画瞬间闪现】，防止用户看到列表往下滚的残影
                 listState.scrollToItem(messages.size - 1)
                 isInitialScrollDone = true
             } else if (isNearBottom) {
-                // 2. 如果用户一直停留在该页面且处于底部，AI回复了新消息
-                // 使用 animateScrollToItem 进行【丝滑滚动】
                 listState.animateScrollToItem(messages.size - 1)
             }
         }
     }
 
-    // 模拟背景渐变（Mesh Gradient 效果）
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
+            focusManager.clearFocus()
+        }
+    }
+
+    var isInputVisible by remember { mutableStateOf(true) }
+    var previousIndex by remember { mutableIntStateOf(0) }
+    var previousOffset by remember { mutableIntStateOf(0) }
+    val scrollThreshold = 40
+
+    LaunchedEffect(listState) {
+        androidx.compose.runtime.snapshotFlow {
+            Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+        }.collect { (index, offset) ->
+            if (index != previousIndex) {
+                isInputVisible = index > previousIndex
+                previousIndex = index
+                previousOffset = offset
+            } else {
+                val delta = offset - previousOffset
+                if (delta > scrollThreshold) {
+                    isInputVisible = true
+                    previousOffset = offset
+                } else if (delta < -scrollThreshold) {
+                    isInputVisible = false
+                    previousOffset = offset
+                }
+            }
+        }
+    }
+
     val meshGradient = Brush.radialGradient(
         colors = listOf(Color(0xFFE0F2F1), Color(0xFFF7F9FC)),
         center = androidx.compose.ui.geometry.Offset(200f, 200f),
@@ -136,6 +154,7 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
         Column(modifier = Modifier.fillMaxSize()) {
             AIHeader()
 
+            // ✨ 修改点 1：将 Box 作为核心布局，让输入框悬浮在列表之上，不再改变列表高度
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -144,17 +163,15 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
+                    // ✨ 增加 bottom padding，为悬浮的输入框留出空间，防止最后一条消息被遮挡
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
                     items(messages) { msg ->
                         AdvancedChatBubble(
                             msg = msg,
                             onSave = { msgId, preview ->
-                                viewModel.confirmAndSaveLedger(
-                                    msgId,
-                                    preview
-                                )
+                                viewModel.confirmAndSaveLedger(msgId, preview)
                             },
                             onEdit = { msgId, preview -> editingState = msgId to preview }
                         )
@@ -171,66 +188,92 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                     }
                 }
 
-                // ✨ 4. 升级为 ExtendedFloatingActionButton 动态胶囊按钮
+                // ✨ 修改点 2：改回动态胶囊按钮，高度固定为 40.dp，保持精致感
                 androidx.compose.animation.AnimatedVisibility(
                     visible = !isNearBottom && messages.isNotEmpty(),
                     enter = fadeIn() + scaleIn(),
                     exit = fadeOut() + scaleOut(),
+                    // 为了不和底部的输入框重叠，稍微把按钮往上挪一点点
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(bottom = 16.dp, end = 16.dp)
+                        .padding(bottom = if (isInputVisible || isNearBottom) 80.dp else 16.dp, end = 16.dp)
                 ) {
-                    ExtendedFloatingActionButton(
+                    androidx.compose.material3.FloatingActionButton(
                         onClick = {
                             coroutineScope.launch {
-                                // 点击瞬间滑到最底部！
                                 listState.animateScrollToItem(messages.size - 1)
                             }
                         },
-                        // ✨ 如果有未读消息，按钮自动拉长展开；如果没有未读，就是一个圆形箭头
-                        expanded = unreadCount > 0,
-                        icon = {
-                            Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "回到最新")
-                        },
-                        text = {
-                            // ✨ 展开时显示的文字
-
-                            Text(
-                                "$unreadCount 条新消息",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                        },
+                        // ✨ 核心修复：限制高度 40dp。如果没有未读，强制宽度也为 40dp (变正圆)；
+                        // 并加上 animateContentSize 自动处理宽度的丝滑伸缩动画
+                        modifier = Modifier
+                            .height(40.dp)
+                            .then(if (unreadCount == 0) Modifier.width(40.dp) else Modifier)
+                            .animateContentSize(),
                         containerColor = AccentBlue,
                         contentColor = Color.White,
-                        // 让它看起来像一个圆润的胶囊
-                        shape = CircleShape
-                    )
-                }
-            }
+                        shape = CircleShape,
+                        elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 2.dp
+                        )
+                    ) {
+                        Row(
+                            // 展开时左右留一点 padding，收回成圆形时 padding 为 0 保证图标绝对居中
+                            modifier = Modifier.padding(horizontal = if (unreadCount > 0) 12.dp else 0.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Rounded.KeyboardArrowDown,
+                                contentDescription = "回到最新",
+                                modifier = Modifier.size(20.dp)
+                            )
 
-            AdvancedChatInput(
-                text = inputText,
-                onTextChange = { inputText = it },
-                onSend = {
-                    if (inputText.isNotBlank()) {
-                        viewModel.sendMessage(inputText)
-                        inputText = ""
-                        // 用户主动发消息时，强制滑到底部
-                        coroutineScope.launch {
-                            if (messages.isNotEmpty()) {
-                                listState.animateScrollToItem(messages.size - 1)
+                            // 有未读消息时，才显示文字
+                            if (unreadCount > 0) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "$unreadCount 条新消息",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1 // 保证文字不换行
+                                )
                             }
                         }
                     }
                 }
-            )
+
+                // ✨ 修改点 3：输入框变为悬浮态 (Alignment.BottomCenter)，彻底消灭推挤带来的白边卡顿
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isInputVisible || isNearBottom,
+                    enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    AdvancedChatInput(
+                        text = inputText,
+                        onTextChange = { inputText = it },
+                        onSend = {
+                            if (inputText.isNotBlank()) {
+                                viewModel.sendMessage(inputText)
+                                inputText = ""
+                                isInputVisible = true
+                                focusManager.clearFocus()
+                                coroutineScope.launch {
+                                    if (messages.isNotEmpty()) {
+                                        listState.animateScrollToItem(messages.size - 1)
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+            }
         }
 
-        // ✨ 修复 3：正确解析 editingState，完成修改更
         editingState?.let { (msgId, preview) ->
-            // 将 "yyyy-MM-dd" 转换为时间戳
+            // ... 底部的 BaseTransactionSheet 逻辑保持完全不变
             val format = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
             val initialTimestamp = try {
                 format.parse(preview.date)?.time ?: System.currentTimeMillis()
@@ -247,14 +290,12 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                 initialRemark = preview.note.ifBlank { "" },
                 initialTimestamp = initialTimestamp,
                 onDismiss = { editingState = null },
-                onDelete = null, // AI 预览账单阶段不需要删除按钮，直接关掉弹窗即可
+                onDelete = null,
                 onSave = { type, category, icon, amountDouble, remark, timestampLong ->
-                    // 1. 金额转回 String
-                    val amountStr = if (amountDouble % 1.0 == 0.0) amountDouble.toInt().toString() else amountDouble.toString()
-                    // 2. 时间戳转回 "yyyy-MM-dd"
+                    val amountStr = if (amountDouble % 1.0 == 0.0) amountDouble.toInt()
+                        .toString() else amountDouble.toString()
                     val updatedDateStr = format.format(java.util.Date(timestampLong))
 
-                    // 3. 组装新的 Preview 并传给 ViewModel
                     val updatedPreview = preview.copy(
                         type = type,
                         category = category,
@@ -446,9 +487,11 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                 Spacer(Modifier.height(20.dp))
 
                 // ✨ 高级细节：绘制一条虚线分割线，模拟真实票据
-                Canvas(modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                ) {
                     drawLine(
                         color = Color(0xFFE5E5EA),
                         start = Offset(0f, 0f),
