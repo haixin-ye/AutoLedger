@@ -1,7 +1,6 @@
 package com.yhx.autoledger.ui.screens
 
 import android.annotation.SuppressLint
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -306,11 +305,11 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                                 // ✨ 修复 2 核心：绝对不要在这里 clearFocus()！
                                 // 这样发送消息后，光标依然在输入框里闪烁，键盘稳稳当当
                                 // focusManager.clearFocus()
-                                coroutineScope.launch {
-                                    if (messages.isNotEmpty()) {
-                                        listState.animateScrollToItem(messages.size - 1)
-                                    }
-                                }
+//                                coroutineScope.launch {
+//                                    if (messages.isNotEmpty()) {
+//                                        listState.animateScrollToItem(messages.size - 1)
+//                                    }
+//                                }
                             }
                         }
                     )
@@ -374,7 +373,7 @@ fun AIHeader() {
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            "AI 记账管家",
+            "AI 记账助手",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold
         )
@@ -434,13 +433,12 @@ fun AdvancedChatBubble(
             if (msg.billPreviews.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 msg.billPreviews.forEach { preview ->
-                    AnimatedVisibility(visible = true) {
-                        ReceiptCard(
-                            preview = preview,
-                            onConfirm = { onSave(msg.id, preview) },
-                            onEdit = { onEdit(msg.id, preview) }
-                        )
-                    }
+                    // ✨✨✨ 唯一修改的地方：去掉了 AnimatedVisibility 包裹，直接渲染卡片！
+                    ReceiptCard(
+                        preview = preview,
+                        onConfirm = { onSave(msg.id, preview) },
+                        onEdit = { onEdit(msg.id, preview) }
+                    )
                     Spacer(Modifier.height(8.dp))
                 }
             }

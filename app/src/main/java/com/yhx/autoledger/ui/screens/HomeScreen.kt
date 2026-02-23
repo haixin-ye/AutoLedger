@@ -296,8 +296,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                         }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-//                                        color = Color(0xFF5CA969)
-                                        color = Color.Black
+                                        color = Color(0xFF00B42A)
+//                                        color = Color.Black
                                     )
                                 }
                                 if (dailyExpense > 0) {
@@ -311,8 +311,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                         }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-//                                        color = Color(0xFFD66969)
-                                        color = Color.Black
+                                        color = Color(0xFFDB1B1B)
+//                                        color = Color.Black
                                     )
                                 }
                             }

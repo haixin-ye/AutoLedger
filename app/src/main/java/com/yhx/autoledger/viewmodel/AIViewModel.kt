@@ -336,7 +336,7 @@ class AIViewModel @Inject constructor(
                 }
             }
         }
-        _messages.value + ChatMessage(
+        _messages.value += ChatMessage(
             content = replyText,
             isFromUser = false,
             billPreviews = billList
