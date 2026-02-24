@@ -43,6 +43,7 @@ import com.yhx.autoledger.ui.components.EditLedgerSheet
 import com.yhx.autoledger.ui.components.MainBalanceCard
 import com.yhx.autoledger.ui.components.RefinedTransactionItem
 import com.yhx.autoledger.ui.components.TransactionData
+import com.yhx.autoledger.ui.theme.AppTheme
 import com.yhx.autoledger.ui.theme.CategoryFood
 import com.yhx.autoledger.ui.theme.CategoryOther
 import com.yhx.autoledger.ui.theme.CategoryShop
@@ -173,7 +174,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                // ✨ 注意：这里删除了原来的 .padding(paddingValues)
+                //
                 .pointerInput(isSelectionMode) {
                     if (isSelectionMode) {
                         detectTapGestures(
@@ -202,11 +203,17 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { viewModel.changeMonth(-1) }) {
-                        Icon(Icons.Rounded.ChevronLeft, "上个月", tint = Color.Gray)
+                        Icon(
+                            Icons.Rounded.ChevronLeft,
+                            "上个月",
+                            tint = AppTheme.colors.textSecondary
+                        )
                     }
                     Text(
                         text = DateUtils.getYearMonthString(monthOffset),
-                        fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
                     )
                     IconButton(
                         onClick = { viewModel.changeMonth(1) },
@@ -215,7 +222,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         Icon(
                             Icons.Rounded.ChevronRight,
                             "下个月",
-                            tint = if (monthOffset < 0) Color.Gray else Color.LightGray
+                            tint = if (monthOffset < 0) AppTheme.colors.textSecondary else Color.LightGray
                         )
                     }
                 }
@@ -257,7 +264,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         modifier = Modifier
                             .padding(24.dp)
                             .fillMaxWidth(),
-                        color = Color.LightGray,
+                        color = AppTheme.colors.textTertiary,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -281,7 +288,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                             Text(
                                 text = date,
                                 style = MaterialTheme.typography.labelLarge,
-                                color = Color.Gray
+                                color = AppTheme.colors.textSecondary
                             )
 
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -296,7 +303,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                         }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF00B42A)
+                                        color = AppTheme.colors.incomeColor
 //                                        color = Color.Black
                                     )
                                 }
@@ -311,7 +318,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                         }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFFDB1B1B)
+                                        color = AppTheme.colors.expenseColor
 //                                        color = Color.Black
                                     )
                                 }

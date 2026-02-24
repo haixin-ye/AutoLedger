@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,22 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
 class UserPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    // ✨ 新增：定义主题的 Key (0: 跟随系统, 1: 浅色, 2: 深色)
+    private val THEME_KEY = intPreferencesKey("theme_preference")
+
+    // 获取当前主题设置
+    val themePreference: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[THEME_KEY] ?: 0 // 默认 0：跟随系统
+    }
+
+    // 更新主题设置
+    suspend fun updateThemePreference(themeValue: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_KEY] = themeValue
+        }
+    }
+
+
     // ✨ 修改点 1：接收动态的年月 Key，返回对应的预算
     fun getMonthlyBudget(yearMonthKey: String): Flow<Double> {
         val key = doublePreferencesKey("budget_$yearMonthKey")

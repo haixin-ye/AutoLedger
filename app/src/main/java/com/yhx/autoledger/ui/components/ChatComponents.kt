@@ -22,13 +22,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.R
-import com.yhx.autoledger.ui.theme.AccentBlue
+import com.yhx.autoledger.ui.theme.AppTheme
 
 @Composable
 fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -> Unit) {
@@ -37,7 +36,7 @@ fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -
             .padding(horizontal = 20.dp, vertical = 16.dp)
             .fillMaxWidth()
             .height(56.dp),
-        color = Color.White,
+        color = AppTheme.colors.cardBackground,
         shape = CircleShape,
         shadowElevation = 12.dp,
         tonalElevation = 4.dp
@@ -50,10 +49,10 @@ fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -
                 value = text,
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
-                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = Color(0xFF1D1D1F)),
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = AppTheme.colors.textPrimary),
                 decorationBox = { innerTextField ->
                     if (text.isEmpty()) {
-                        Text("输入语音或文字记一笔...", color = Color(0xFFC7C7CC), fontSize = 15.sp)
+                        Text("输入语音或文字记一笔...", color = AppTheme.colors.textTertiary, fontSize = 15.sp)
                     }
                     innerTextField()
                 }
@@ -65,13 +64,13 @@ fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -
                 enabled = !isInputEmpty,
                 modifier = Modifier
                     .size(40.dp)
-                    .background(color = if (isInputEmpty) Color(0xFFF2F2F7) else AccentBlue, shape = CircleShape)
+                    .background(color = if (isInputEmpty) AppTheme.colors.surfaceVariant else AppTheme.colors.brandAccent, shape = CircleShape)
                     .bounceClick()
             ) {
                 Icon(
                     Icons.Default.Send,
                     contentDescription = "Send",
-                    tint = if (isInputEmpty) Color(0xFFC7C7CC) else Color.White,
+                    tint = if (isInputEmpty) AppTheme.colors.textTertiary else AppTheme.colors.textOnAccent,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -83,8 +82,8 @@ fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -
 fun ChatAvatar(isFromUser: Boolean) {
     Surface(
         shape = CircleShape,
-        color = if (isFromUser) Color(0xFFE3F2FD) else Color(0xFFFFF3E0),
-        modifier = Modifier.size(34.dp).shadow(2.dp, CircleShape).border(1.dp, Color.White, CircleShape)
+        color = if (isFromUser) AppTheme.colors.chatUserHeadCircle else AppTheme.colors.chatAIHeadCircle,
+        modifier = Modifier.size(34.dp).shadow(2.dp, CircleShape).border(1.dp, AppTheme.colors.cardBackground, CircleShape)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Image(

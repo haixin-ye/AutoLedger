@@ -52,23 +52,52 @@ fun MainBalanceCard(
         ) {
             // 1. 背景装饰圆（放在底层）
             Surface(
-                modifier = Modifier.size(160.dp).offset(x = 220.dp, y = (-40).dp),
+                modifier = Modifier
+                    .size(160.dp)
+                    .offset(x = 220.dp, y = (-40).dp),
                 color = Color.White.copy(alpha = 0.4f),
                 shape = CircleShape
             ) {}
 
             // 2. 内容层（确保在最表层）
-            Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier
+                .padding(24.dp)
+                .fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Column {
-                        Text("本月支出", color = Color.DarkGray.copy(alpha = 0.6f), fontSize = 14.sp)
-                        Text("¥ $expense", color = Color.Black, fontSize = 38.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            "本月支出",
+                            color = Color.DarkGray.copy(alpha = 0.6f),
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            "¥ $expense",
+                            color = Color.Black,
+                            fontSize = 38.sp,
+                            fontWeight = FontWeight.Black
+                        )
                     }
                     // 日均展示区
-                    Surface(color = Color.White.copy(alpha = 0.6f), shape = RoundedCornerShape(16.dp)) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
                         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                            Text("日均可用", color = AccentBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            Text("¥ $dailyAvg", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "日均可用",
+                                color = AccentBlue,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "¥ $dailyAvg",
+                                color = Color.Black,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -76,7 +105,10 @@ fun MainBalanceCard(
                 Spacer(modifier = Modifier.weight(1f))
 
                 // 三列数据
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     CardDetailItem("总预算", budget)
                     CardDetailItem("总收入", income)
                     CardDetailItem("总结余", balance)

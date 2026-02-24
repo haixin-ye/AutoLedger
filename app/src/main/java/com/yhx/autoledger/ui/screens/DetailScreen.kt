@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,6 +52,7 @@ import com.yhx.autoledger.ui.components.PremiumDonutChart
 import com.yhx.autoledger.ui.components.YearMonthPickerDialog
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.components.getPremiumBrush
+import com.yhx.autoledger.ui.theme.AppTheme
 import com.yhx.autoledger.viewmodel.DailyRecord
 import com.yhx.autoledger.viewmodel.DetailViewModel
 import kotlinx.coroutines.launch
@@ -157,7 +157,8 @@ fun MainDetailContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F9FC))
+            // ❌ 修改前：.background(Color(0xFFF7F9FC))
+            .background(AppTheme.colors.appBackground)
     ) {
         // ✨ 需求 1：修改后的 TopBar
         item { DetailTopBar(month, onMonthClick) }
@@ -216,7 +217,7 @@ fun MainDetailContent(
                         .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("本月暂无记录 🍃", color = Color.Gray, fontSize = 16.sp)
+                    Text("本月暂无记录 🍃", color = AppTheme.colors.textSecondary, fontSize = 16.sp)
                 }
             }
         } else {
@@ -241,7 +242,7 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null // ✨ 核心：彻底屏蔽系统的水波纹选择特效
             ) { onClick() },
-        color = Color.White,
+        color = AppTheme.colors.cardBackground,
         shape = RoundedCornerShape(20.dp),
         shadowElevation = 1.dp
     ) {
@@ -259,7 +260,8 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                         .weight(1f)
                         .height(6.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF1F2F6))
+                        // ❌ 修改前：.background(Color(0xFFF1F2F6))
+                        .background(AppTheme.colors.surfaceVariant)
                 ) {
                     Box(
                         modifier = Modifier
@@ -272,7 +274,8 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                 Text(
                     "${(category.percentage * 100).toInt()}%",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    // ❌ 修改前：color = Color.Gray
+                    color = AppTheme.colors.textSecondary
                 )
             }
         }
@@ -285,8 +288,10 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
 @Composable
 fun StatItem(label: String, value: String, modifier: Modifier) {
     Column(modifier) {
-        Text(label, fontSize = 12.sp, color = Color.Gray)
-        Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.Black)
+        // ❌ 修改前：Text(label, fontSize = 12.sp, color = Color.Gray)
+        Text(label, fontSize = 12.sp, color = AppTheme.colors.textSecondary) // ✅ 修改后
+        // ❌ 修改前：Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.Black)
+        Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = AppTheme.colors.textPrimary) // ✅ 修改后
     }
 }
 

@@ -57,7 +57,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,6 +68,7 @@ import com.yhx.autoledger.ui.components.AdvancedChatInput
 import com.yhx.autoledger.ui.components.BaseTransactionSheet
 import com.yhx.autoledger.ui.components.ChatAvatar
 import com.yhx.autoledger.ui.theme.AccentBlue
+import com.yhx.autoledger.ui.theme.AppTheme
 import com.yhx.autoledger.viewmodel.AIViewModel
 import kotlinx.coroutines.launch
 
@@ -101,7 +101,7 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
     }
 
     var lastReadCount by remember { mutableIntStateOf(messages.size) }
-
+    val dashLineColor = AppTheme.colors.dividerColor
     LaunchedEffect(isNearBottom, messages.size) {
         if (isNearBottom) {
             lastReadCount = messages.size
@@ -170,7 +170,8 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
     }
 
     val meshGradient = Brush.radialGradient(
-        colors = listOf(Color(0xFFE0F2F1), Color(0xFFF7F9FC)),
+//        colors = listOf(Color(0xFFE0F2F1), Color(0xFFF7F9FC)),
+        colors = listOf(AppTheme.colors.appBackground, AppTheme.colors.appBackground),
         center = androidx.compose.ui.geometry.Offset(200f, 200f),
         radius = 1000f
     )
@@ -224,7 +225,7 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                         item {
                             Text(
                                 "AI 正在思考中...",
-                                color = Color.Gray,
+                                color = AppTheme.colors.textSecondary,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(start = 12.dp)
                             )
@@ -256,8 +257,8 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                             .height(40.dp)
                             .then(if (unreadCount == 0) Modifier.width(40.dp) else Modifier)
                             .animateContentSize(),
-                        containerColor = AccentBlue,
-                        contentColor = Color.White,
+                        containerColor = AppTheme.colors.brandAccent,
+                        contentColor = AppTheme.colors.textOnAccent,
                         shape = CircleShape,
                         elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(
                             defaultElevation = 4.dp,
@@ -368,14 +369,15 @@ fun AIHeader() {
         Icon(
             Icons.Default.AutoAwesome,
             contentDescription = null,
-            tint = AccentBlue,
+            tint = AppTheme.colors.brandAccent,
             modifier = Modifier.size(20.dp)
         )
         Spacer(Modifier.width(8.dp))
         Text(
             "AI 记账助手",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.ExtraBold
+            fontWeight = FontWeight.ExtraBold,
+            color = AppTheme.colors.textPrimary
         )
     }
 }
@@ -394,8 +396,9 @@ fun AdvancedChatBubble(
         RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
     }
 
-    val bubbleColor = if (msg.isFromUser) AccentBlue else Color(0xFFF5F5F7)
-    val textColor = if (msg.isFromUser) Color.White else Color(0xFF1D1D1F)
+    val bubbleColor =
+        if (msg.isFromUser) AppTheme.colors.chatUserBubble else AppTheme.colors.chatAiBubble
+    val textColor = if (msg.isFromUser) AppTheme.colors.textOnAccent else AppTheme.colors.chatAiText
 
     Row(
         modifier = Modifier
@@ -454,6 +457,7 @@ fun AdvancedChatBubble(
 @Composable
 fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit) {
     val isConfirmed = preview.isSaved
+    val dashLineColor = AppTheme.colors.dividerColor
     val displayDate = remember(preview.date) {
         try {
             val dateObj = inputSdf.parse(preview.date)
@@ -468,7 +472,7 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
             .width(236.dp)
             .padding(vertical = 4.dp),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White,
+        color = AppTheme.colors.cardBackground,
         shadowElevation = 8.dp,
         tonalElevation = 2.dp
     ) {
@@ -483,7 +487,7 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                     Icon(
                         Icons.Rounded.Edit,
                         contentDescription = "修改",
-                        tint = Color(0xFFBDBDBD),
+                        tint = AppTheme.colors.textTertiary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -505,14 +509,14 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                         Text(
                             text = if (preview.type == 0) "支出" else "收入",
                             fontSize = 13.sp,
-                            color = Color(0xFF8E8E93),
+                            color = AppTheme.colors.textSecondary,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "¥ ${preview.amount}",
                             fontSize = 26.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF1D1D1F)
+                            color = AppTheme.colors.textPrimary
                         )
                     }
                 }
@@ -525,7 +529,7 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                         .height(1.dp)
                 ) {
                     drawLine(
-                        color = Color(0xFFE5E5EA),
+                        color = dashLineColor,
                         start = Offset(0f, 0f),
                         end = Offset(size.width, 0f),
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
@@ -551,8 +555,8 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                         .height(44.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentBlue,
-                        disabledContainerColor = Color(0xFFF2F2F7),
-                        disabledContentColor = Color(0xFFC7C7CC)
+                        disabledContainerColor = AppTheme.colors.surfaceVariant,
+                        disabledContentColor = AppTheme.colors.textTertiary
                     ),
                     shape = RoundedCornerShape(14.dp),
                     elevation = ButtonDefaults.buttonElevation(
@@ -580,11 +584,11 @@ fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 14.sp, color = Color(0xFFAEAEC0))
+        Text(text = label, fontSize = 14.sp, color = AppTheme.colors.textSecondary)
         Text(
             text = value,
             fontSize = 14.sp,
-            color = Color(0xFF333333),
+            color = AppTheme.colors.textPrimary,
             fontWeight = FontWeight.SemiBold
         )
     }

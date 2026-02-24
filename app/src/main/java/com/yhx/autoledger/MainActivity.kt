@@ -1,10 +1,10 @@
 package com.yhx.autoledger
 
-// 别忘了在文件顶部引入必要的动画相关包
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels // ✨ 新增：用于获取 ViewModel
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.collectAsState // ✨ 新增：用于观察 Flow 状态
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,13 +42,13 @@ import com.yhx.autoledger.ui.screens.AIScreen
 import com.yhx.autoledger.ui.screens.DetailScreen
 import com.yhx.autoledger.ui.screens.HomeScreen
 import com.yhx.autoledger.ui.screens.SettingsScreen
-import com.yhx.autoledger.ui.theme.AccentBlue
+import com.yhx.autoledger.ui.theme.AppTheme // ✨ 新增：引入全局主题
 import com.yhx.autoledger.ui.theme.AutoLedgerTheme
 import com.yhx.autoledger.viewmodel.HomeViewModel
+import com.yhx.autoledger.viewmodel.MainViewModel // ✨ 新增：引入 MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -55,23 +56,27 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var categoryDao: CategoryDao
 
+    // ✨ 新增：注入全局控制的 ViewModel
+    private val mainViewModel: MainViewModel by viewModels()
+
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        // ✨ 2. 抽掉系统默认的半透明黑色背景，设为完全透明！
+        // 抽掉系统默认的半透明黑色背景，设为完全透明！
         window.statusBarColor = Color.Transparent.toArgb()
         window.navigationBarColor = Color.Transparent.toArgb()
 
-        // ✨ 3. （极其关键）因为底色透明了，如果你的 App 背景是浅色/白色，
-        // 必须要让状态栏的时间、电量变成深色（黑色），否则会看不清！
-        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-        insetsController.isAppearanceLightStatusBars = true     // 顶部图标变黑
-        insetsController.isAppearanceLightNavigationBars = true // 底部小白条变黑（如果是手势导航）
+        // ✨ 极其关键的修改：
+        // 以前这里硬编码了 isAppearanceLightStatusBars = true，会导致深色模式下状态栏文字依然是黑色的（看不见）。
+        // 我们现在的 AutoLedgerTheme 内部已经根据是否是深色模式动态处理了这个逻辑，所以这里不需要写死了。
+        // val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        // insetsController.isAppearanceLightStatusBars = true
+        // insetsController.isAppearanceLightNavigationBars = true
 
 
-        // 3. 临时测试代码：强行读取一次数据库，触发 onCreate 回调和预设数据注入
+        // 临时测试代码：强行读取一次数据库，触发 onCreate 回调和预设数据注入
         lifecycleScope.launch {
             categoryDao.getAllCategories().collect { categories ->
                 Log.d("DB_TEST", "数据库被唤醒啦！当前有 ${categories.size} 个分类")
@@ -79,33 +84,30 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            AutoLedgerTheme {
-                //滑动两次退出。
+            // ✨ 1. 观察 DataStore 中的主题偏好 (0:系统 1:浅色 2:深色)
+            val themePreference by mainViewModel.themePreference.collectAsState()
+
+            // ✨ 2. 将偏好传给 AutoLedgerTheme
+            AutoLedgerTheme(themePreference = themePreference) {
+                // 滑动两次退出。
                 DoubleBackToExitHandler()
-                // ✨ 1. 定义页面的顺序列表（作为 Pager 的数据源）
+
                 val tabOrder = remember {
                     listOf(Screen.Home, Screen.Detail, Screen.AI, Screen.Settings)
                 }
 
-                // ✨ 2. 初始化 Pager 状态 (管理当前滑到了哪一页)
                 val pagerState = rememberPagerState(pageCount = { tabOrder.size })
-
-                // ✨ 3. 协程作用域 (用于点击底部导航时，触发页面平滑滚动)
                 val coroutineScope = rememberCoroutineScope()
-
                 var showAddSheet by remember { mutableStateOf(false) }
 
                 Scaffold(
                     bottomBar = {
                         MainBottomBar(
-                            // 动态获取当前滑到的页面 Route，传给底部导航栏让图标高亮
                             currentRoute = tabOrder[pagerState.currentPage].route,
                             onNavigate = { route ->
-                                // 当用户点击底部图标时，找到目标索引，并触发平滑滚动
                                 val targetIndex = tabOrder.indexOfFirst { it.route == route }
                                 if (targetIndex != -1) {
                                     coroutineScope.launch {
-                                        // 丝滑地滚动到目标页！
                                         pagerState.scrollToPage(targetIndex)
                                     }
                                 }
@@ -113,12 +115,12 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     floatingActionButton = {
-                        // ✨ 智能判断：第 0 页(首页) 和 第 1 页(明细页) 才显示加号
                         if (pagerState.currentPage == 0 || pagerState.currentPage == 1) {
                             FloatingActionButton(
                                 onClick = { showAddSheet = true },
-                                containerColor = AccentBlue,
-                                contentColor = Color.White,
+                                // ✨ 3. 替换硬编码 AccentBlue -> 映射为品牌色
+                                containerColor = AppTheme.colors.brandAccent,
+                                contentColor = Color.White, // 品牌色上的白色图标保持不变
                                 shape = CircleShape,
                                 modifier = Modifier
                                     .padding(bottom = 16.dp)
@@ -132,33 +134,36 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     },
-                    containerColor = Color(0xFFF7F9FC)
+                    // ✨ 4. 替换硬编码 Color(0xFFF7F9FC) -> 映射为全局背景色
+                    containerColor = AppTheme.colors.appBackground
                 ) { innerPadding ->
                     Box(
                         modifier = Modifier
                             .padding(innerPadding)
                             .consumeWindowInsets(innerPadding)
                     ) {
-
-                        // ✨ 4. 核心武器：HorizontalPager 完美接管手势与页面内容！
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize(),
-                            beyondBoundsPageCount = 2   //预加载左右2个页面
-//                            beyondBoundsPageCount = tabOrder.size   //预加载全部
-
+                            beyondBoundsPageCount = 2
                         ) { pageIndex ->
-                            // 根据当前的页码，渲染对应的屏幕
                             when (tabOrder[pageIndex].route) {
                                 Screen.Home.route -> HomeScreen()
                                 Screen.Detail.route -> DetailScreen()
                                 Screen.AI.route -> AIScreen()
-                                Screen.Settings.route -> SettingsScreen()
+
+                                // ✨ 5. 修复此处报错：传入对应的参数
+                                Screen.Settings.route -> SettingsScreen(
+                                    currentTheme = themePreference,
+                                    onThemeChange = { newTheme ->
+                                        mainViewModel.updateTheme(newTheme)
+                                    }
+                                )
                             }
                         }
                     }
 
-                    // ✨ 挂载弹窗组件 (这部分代码保持你原来的逻辑完全不变)
+                    // 挂载弹窗组件 (保持逻辑完全不变)
                     val homeViewModel: HomeViewModel = hiltViewModel()
 
                     if (showAddSheet) {
