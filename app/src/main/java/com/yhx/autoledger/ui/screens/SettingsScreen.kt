@@ -1,5 +1,10 @@
 package com.yhx.autoledger.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import android.text.TextUtils
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -37,6 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,22 +51,43 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.theme.AccentBlue
 import com.yhx.autoledger.ui.theme.LightBlueGradient
 
 @Composable
 fun SettingsScreen() {
-    // 模拟登录状态（后续接后端可以由 ViewModel 提供）
     var isLoggedIn by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // ✨ 状态1：自动记账权限状态
+    var isAutoRecordingEnabled by remember { mutableStateOf(isAccessibilityServiceEnabled(context)) }
+    // ✨ 状态2：隐私锁测试状态
+    var isPrivacyLockEnabled by remember { mutableStateOf(false) }
+
+    // ✨ 核心魔法：当用户从系统设置页返回 App 时，自动重新检查权限，刷新开关状态！
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isAutoRecordingEnabled = isAccessibilityServiceEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F9FC)), // 统一的极浅蓝背景
+            .background(Color(0xFFF7F9FC)),
         contentPadding = PaddingValues(bottom = 40.dp)
     ) {
         // 1. 顶部标题
@@ -77,7 +104,7 @@ fun SettingsScreen() {
         item {
             ProfileCard(
                 isLoggedIn = isLoggedIn,
-                onClick = { isLoggedIn = !isLoggedIn } // 测试点击切换状态
+                onClick = { isLoggedIn = !isLoggedIn }
             )
         }
 
@@ -87,9 +114,17 @@ fun SettingsScreen() {
                 SettingSwitchRow(
                     icon = Icons.Rounded.AutoAwesome,
                     iconTint = AccentBlue,
-                    title = "后台自动记账",
-                    subtitle = "允许读取通知和剪贴板智能解析",
-                    initialChecked = true
+                    title = "无障碍视觉引擎 (防漏记)",
+                    subtitle = if (isAutoRecordingEnabled) "透视眼已开启，在微信支付界面自动摘取数据" else "点击去系统开启无障碍服务",
+                    checked = isAutoRecordingEnabled,
+                    onCheckedChange = {
+                        // ✨ 核心跳转逻辑：跳往无障碍设置页
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        context.startActivity(intent)
+                        if (!isAutoRecordingEnabled) {
+                            Toast.makeText(context, "请在已下载的应用中找到 AutoLedger 并开启", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 )
                 Divider(Modifier.padding(start = 56.dp), color = Color(0xFFF1F2F6))
                 SettingClickRow(
@@ -123,7 +158,8 @@ fun SettingsScreen() {
                     iconTint = Color(0xFFFF7675),
                     title = "隐私锁",
                     subtitle = "进入 App 需要面容或指纹验证",
-                    initialChecked = false
+                    checked = isPrivacyLockEnabled,
+                    onCheckedChange = { isPrivacyLockEnabled = it }
                 )
             }
         }
@@ -177,19 +213,17 @@ fun ProfileCard(isLoggedIn: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 20.dp, vertical = 8.dp)
             .height(110.dp)
             .bounceClick()
-            .clickable { onClick()}, // 点击动效
+            .clickable { onClick()},
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        // 如果登录，使用蓝色渐变背景；否则使用纯白
         val backgroundModifier = if (isLoggedIn) Modifier.background(LightBlueGradient) else Modifier.background(Color.White)
 
         Row(
             modifier = Modifier.fillMaxSize().then(backgroundModifier).padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 头像区
             Surface(
                 modifier = Modifier.size(64.dp),
                 shape = CircleShape,
@@ -206,7 +240,6 @@ fun ProfileCard(isLoggedIn: Boolean, onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 文字区
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (isLoggedIn) "Hi, 探索者" else "点击登录 / 注册",
@@ -260,7 +293,6 @@ fun SettingClickRow(icon: ImageVector, iconTint: Color, title: String, value: St
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 带轻微背景色的柔和图标
         Box(modifier = Modifier.size(36.dp).background(iconTint.copy(alpha = 0.15f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
@@ -275,10 +307,9 @@ fun SettingClickRow(icon: ImageVector, iconTint: Color, title: String, value: St
     }
 }
 
+// ✨ 修改点：将内部管理的 checked 提升到了函数参数，由外部传入状态
 @Composable
-fun SettingSwitchRow(icon: ImageVector, iconTint: Color, title: String, subtitle: String = "", initialChecked: Boolean) {
-    var checked by remember { mutableStateOf(initialChecked) }
-
+fun SettingSwitchRow(icon: ImageVector, iconTint: Color, title: String, subtitle: String = "", checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -293,13 +324,29 @@ fun SettingSwitchRow(icon: ImageVector, iconTint: Color, title: String, subtitle
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             if (subtitle.isNotEmpty()) {
-                Text(subtitle, fontSize = 11.sp, color = Color.Gray)
+                Text(subtitle, fontSize = 11.sp, color = if (checked) AccentBlue else Color.Gray)
             }
         }
         Switch(
             checked = checked,
-            onCheckedChange = { checked = it },
+            onCheckedChange = onCheckedChange, // ✨ 使用外部传进来的控制逻辑
             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AccentBlue)
         )
     }
+}
+
+// 检查是否拥有无障碍权限
+fun isAccessibilityServiceEnabled(context: Context): Boolean {
+    val expectedComponentName = "${context.packageName}/com.yhx.autoledger.autobookkeeping.AutoLedgerAccessibilityService"
+    val enabledServicesSetting = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+    if (enabledServicesSetting == null) return false
+    val colonSplitter = TextUtils.SimpleStringSplitter(':')
+    colonSplitter.setString(enabledServicesSetting)
+    while (colonSplitter.hasNext()) {
+        val componentName = colonSplitter.next()
+        if (componentName.equals(expectedComponentName, ignoreCase = true)) {
+            return true
+        }
+    }
+    return false
 }
