@@ -22,28 +22,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.models.CategoryPercentage
+import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
 
-// ✨ 将高级渐变色板统一抽取到组件内部，使其内聚
-val PremiumColors = listOf(
-    Pair(Color(0xFF84FAB0), Color(0xFF8FD3F4)), // 清新薄荷 -> 晴空蓝
-    Pair(Color(0xFFA18CD1), Color(0xFFFBC2EB)), // 梦幻紫 -> 浅樱粉
-    Pair(Color(0xFFFFECD2), Color(0xFFFCB69F)), // 活力蜜桃
-    Pair(Color(0xFF4FACFE), Color(0xFF00F2FE)), // 科技亮蓝
-    Pair(Color(0xFFF6D365), Color(0xFFFDA085)), // 暖阳橙黄
-    Pair(Color(0xFFE0C3FC), Color(0xFF8EC5FC)), // 晚霞灰紫
-    Pair(Color(0xFFFFAA85), Color(0xFFB3315F))  // 树莓红
-)
-
+// ✨ 将获取颜色的逻辑改为从 AppTheme 动态读取
+@Composable
 fun getPremiumBrush(index: Int): Brush {
-    val colors = PremiumColors[index % PremiumColors.size]
+    val palette = AppTheme.colors.donutChartPalette
+    val colors = palette[index % palette.size]
     return Brush.linearGradient(listOf(colors.first, colors.second))
 }
 
+@Composable
 fun getPremiumBaseColor(index: Int): Color {
-    return PremiumColors[index % PremiumColors.size].first
+    val palette = AppTheme.colors.donutChartPalette
+    return palette[index % palette.size].first
 }
 
-// ✨ 纯粹图表组件
 @Composable
 fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
     Row(
@@ -59,6 +53,13 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
             contentAlignment = Alignment.Center,
             modifier = Modifier.weight(1.3f)
         ) {
+            // ✨ 提前读取轨道颜色，避免在 Canvas 作用域报错
+            val trackColor = AppTheme.colors.donutChartTrack
+
+            // 提前准备好所有的 Brush，以便在 Canvas 中使用
+            val brushes = data.mapIndexed { index, _ -> getPremiumBrush(index) }
+            val singleBrush = if (data.size == 1) getPremiumBrush(0) else null
+
             androidx.compose.foundation.Canvas(modifier = Modifier.size(210.dp)) {
                 val strokeWidthPx = 20.dp.toPx()
                 val radius = (size.minDimension - strokeWidthPx) / 2f
@@ -68,16 +69,16 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                 val totalOffsetAngle = capAngle + visualGapAngle
 
                 drawCircle(
-                    color = Color(0xFFF1F3F6),
+                    color = trackColor, // ✨ 映射底轨色
                     radius = radius,
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidthPx)
                 )
 
                 var currentStartAngle = -90f
 
-                if (data.size == 1) {
+                if (data.size == 1 && singleBrush != null) {
                     drawArc(
-                        brush = getPremiumBrush(0),
+                        brush = singleBrush,
                         startAngle = -90f,
                         sweepAngle = 360f,
                         useCenter = false,
@@ -92,7 +93,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                             val actualSweep = rawSweep - totalOffsetAngle
                             val actualStart = currentStartAngle + (totalOffsetAngle / 2f)
                             drawArc(
-                                brush = getPremiumBrush(index),
+                                brush = brushes[index],
                                 startAngle = actualStart,
                                 sweepAngle = actualSweep,
                                 useCenter = false,
@@ -102,7 +103,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                             )
                         } else if (rawSweep > 0f) {
                             drawArc(
-                                brush = getPremiumBrush(index),
+                                brush = brushes[index],
                                 startAngle = currentStartAngle + (visualGapAngle / 2f),
                                 sweepAngle = maxOf(0.5f, rawSweep - visualGapAngle),
                                 useCenter = false,
@@ -121,7 +122,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                 Text(
                     text = "总支出",
                     fontSize = 12.sp,
-                    color = Color(0xFF9CA3AF),
+                    color = AppTheme.colors.donutChartTextSecondary, // ✨ 映射次要文字色
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(Modifier.height(4.dp))
@@ -130,14 +131,14 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                         text = "¥",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1F2937),
+                        color = AppTheme.colors.donutChartTextPrimary, // ✨ 映射主要文字色
                         modifier = Modifier.padding(bottom = 2.dp, end = 2.dp)
                     )
                     Text(
                         text = totalExpense,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color(0xFF1F2937),
+                        color = AppTheme.colors.donutChartTextPrimary, // ✨ 映射主要文字色
                         letterSpacing = (-0.5).sp
                     )
                 }
@@ -149,18 +150,14 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                // ✨ 核心修改点：加大 start padding (例如 36.dp 或 40.dp)
-                // 这会把整个列表向右挤，同时压缩宽度，让名字和百分比靠近
                 .padding(start = 36.dp, end = 16.dp),
-            verticalArrangement = Arrangement.Center
+            // ✨ 修复：改为 SpaceEvenly，让图例在垂直方向上均匀分布，彻底告别高度写死导致的溢出遮挡！
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
             data.take(5).forEachIndexed { index, item ->
-                // 去掉了多余的嵌套 Row，直接一层搞定
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     // 1. 圆点
                     Box(
@@ -176,7 +173,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                         text = item.name,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2D3436),
+                        color = AppTheme.colors.textPrimary, // ✨ 图例名字映射全局主文字色
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -186,7 +183,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                     Text(
                         text = "${(item.percentage * 100).toInt()}%",
                         fontSize = 14.sp,
-                        color = Color.Gray,
+                        color = AppTheme.colors.textSecondary, // ✨ 图例百分比映射全局副文字色
                         fontWeight = FontWeight.Medium
                     )
                 }

@@ -38,7 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.yhx.autoledger.ui.theme.AccentBlue
+import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
 import java.time.YearMonth
 
 @Composable
@@ -53,7 +53,8 @@ fun YearMonthPickerDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = Color.White,
+            // ✨ 复用全局卡片/弹窗背景色
+            color = AppTheme.colors.cardBackground,
             shadowElevation = 8.dp
         ) {
             Column(
@@ -67,16 +68,19 @@ fun YearMonthPickerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { selectedYear-- }) {
-                        Icon(Icons.Default.ChevronLeft, contentDescription = "上一年")
+                        // ✨ 显式指定图标颜色，适配深色模式
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "上一年", tint = AppTheme.colors.textPrimary)
                     }
                     Text(
                         text = "$selectedYear 年",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color(0xFF2D3436)
+                        // ✨ 复用主文本色
+                        color = AppTheme.colors.textPrimary
                     )
                     IconButton(onClick = { selectedYear++ }) {
-                        Icon(Icons.Default.ChevronRight, contentDescription = "下一年")
+                        // ✨ 显式指定图标颜色
+                        Icon(Icons.Default.ChevronRight, contentDescription = "下一年", tint = AppTheme.colors.textPrimary)
                     }
                 }
 
@@ -87,7 +91,7 @@ fun YearMonthPickerDialog(
                     columns = GridCells.Fixed(4),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 300.dp), // 设置一个足够大的最大高度
+                        .heightIn(max = 300.dp),
                     userScrollEnabled = false,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -99,7 +103,8 @@ fun YearMonthPickerDialog(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) AccentBlue else Color(0xFFF0F4F8))
+                                // ✨ 选中态用品牌色，未选中用表层灰槽色
+                                .background(if (isSelected) AppTheme.colors.brandAccent else AppTheme.colors.surfaceVariant)
                                 .clickable { selectedMonth = month }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center
@@ -108,7 +113,8 @@ fun YearMonthPickerDialog(
                                 text = "${month}月",
                                 fontSize = 14.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) Color.White else Color(0xFF2D3436)
+                                // ✨ 选中时用白色(OnAccent)，未选中时用主文本色
+                                color = if (isSelected) AppTheme.colors.textOnAccent else AppTheme.colors.textPrimary
                             )
                         }
                     }
@@ -122,15 +128,18 @@ fun YearMonthPickerDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("取消", color = Color.Gray)
+                        // ✨ 复用次要文本色
+                        Text("取消", color = AppTheme.colors.textSecondary)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onConfirm(YearMonth.of(selectedYear, selectedMonth)) },
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                        // ✨ 复用品牌色
+                        colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.brandAccent),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("确定")
+                        // ✨ 显式指定白色
+                        Text("确定", color = AppTheme.colors.textOnAccent)
                     }
                 }
             }

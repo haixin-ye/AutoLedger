@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.ui.navigation.bottomNavItems
+import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
 
 @Composable
 fun MainBottomBar(
@@ -35,7 +36,8 @@ fun MainBottomBar(
 ) {
     // 保留你原有的带阴影和毛玻璃感的底座，非常漂亮
     Surface(
-        color = Color.White.copy(alpha = 0.95f),
+        // ✨ 复用底栏专属背景色，并保留高级透明度
+        color = AppTheme.colors.bottomBarBackground.copy(alpha = 0.95f),
         tonalElevation = 8.dp,
         shadowElevation = 16.dp,
         modifier = Modifier
@@ -55,7 +57,8 @@ fun MainBottomBar(
 
                 // ✨ 加入颜色渐变动画，替代系统生硬的切换
                 val contentColor by animateColorAsState(
-                    targetValue = if (selected) Color(0xFF74EBD5) else Color.Gray,
+                    // ✨ 选中用全局品牌色，未选中用全局弱提示色
+                    targetValue = if (selected) AppTheme.colors.brandAccent else AppTheme.colors.textTertiary,
                     animationSpec = tween(durationMillis = 300),
                     label = "colorAnimation"
                 )

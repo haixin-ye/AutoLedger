@@ -58,9 +58,6 @@ import com.yhx.autoledger.viewmodel.DetailViewModel
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 
-// 在文件顶部定义高级色板
-
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
@@ -81,29 +78,23 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
         baseMonth.plusMonths(pagerState.currentPage.toLong())
     }
 
-
-    // ✨ 真正的日期选择弹窗
     if (showMonthPicker) {
         YearMonthPickerDialog(
-            initialMonth = currentMonth, // 打开时默认选中当前页面显示的月份
+            initialMonth = currentMonth,
             onConfirm = { selectedYearMonth ->
-                // 计算选中的年月对应 Pager 的哪一页
                 val targetPage = (selectedYearMonth.year - baseMonth.year) * 12 +
                         (selectedYearMonth.monthValue - baseMonth.monthValue)
 
-                // 平滑滑动过去
                 scope.launch {
                     pagerState.animateScrollToPage(targetPage)
                 }
-                showMonthPicker = false // 关闭弹窗
+                showMonthPicker = false
             },
             onDismiss = {
-                showMonthPicker = false // 取消关闭弹窗
+                showMonthPicker = false
             }
         )
     }
-
-
 
     LaunchedEffect(pagerState.currentPage) {
         val newOffset = pagerState.currentPage - initialPage
@@ -111,8 +102,6 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
     }
 
     var selectedCategoryInfo by remember { mutableStateOf<Pair<CategoryPercentage, Int>?>(null) }
-
-
 
     AnimatedContent(targetState = selectedCategoryInfo, label = "screen_transition") { info ->
         if (info == null) {
@@ -122,16 +111,15 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                 monthlyStats,
                 dailyRecordsMap,
                 categoryPercentages,
-                onMonthClick = { showMonthPicker = true }, // 传入点击事件
+                onMonthClick = { showMonthPicker = true },
                 onCategoryClick = { cat, idx -> selectedCategoryInfo = cat to idx }
             )
         } else {
             CategoryDetailView(
                 category = info.first,
-                categoryIndex = info.second, // 或者您之前传的 themeColor，保持一致即可
+                categoryIndex = info.second,
                 allLedgers = currentMonthLedgers,
                 onBack = { selectedCategoryInfo = null },
-                // ✨ 补充传入保存和删除的回调
                 onSaveLedger = { updatedLedger -> viewModel.updateLedger(updatedLedger) },
                 onDeleteLedger = { deletedLedger -> viewModel.deleteLedger(deletedLedger) }
             )
@@ -149,22 +137,18 @@ fun MainDetailContent(
     categories: List<CategoryPercentage>,
     onMonthClick: () -> Unit,
     onCategoryClick: (CategoryPercentage, Int) -> Unit,
-    viewModel: DetailViewModel = hiltViewModel() // 注入 viewModel 拿到预算
+    viewModel: DetailViewModel = hiltViewModel()
 ) {
-    // ✨ 观察真实预算
     val budget by viewModel.monthlyBudget.collectAsState()
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            // ❌ 修改前：.background(Color(0xFFF7F9FC))
-            .background(AppTheme.colors.appBackground)
+            .background(AppTheme.colors.appBackground) // ✅ 完美复用
     ) {
-        // ✨ 需求 1：修改后的 TopBar
         item { DetailTopBar(month, onMonthClick) }
 
         item {
-            // ✨ 需求 3：增强滑动体验
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -172,11 +156,9 @@ fun MainDetailContent(
                     .padding(horizontal = 16.dp),
                 pageSpacing = 16.dp
             ) { page ->
-                // 计算当前页面的偏移量 (0.0 到 1.0)
                 val pageOffset =
                     (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
 
-                // 根据偏移量计算缩放和透明度
                 val alpha = 1f - Math.abs(pageOffset).coerceIn(0f, 0.6f)
                 val scale = 1f - (Math.abs(pageOffset) * 0.08f)
 
@@ -191,24 +173,18 @@ fun MainDetailContent(
             }
         }
 
-        // --- 模块 1：数据总览模块 ---
         item {
             PremiumBlockCard {
-                // ✨ 传入 stats 和 观察到的 realBudget
                 DataOverviewSection(stats = stats, budget = budget)
             }
         }
 
-        // --- 模块 2：消费趋势模块 ---
         item {
-            // 给两个模块之间增加一个 Spacer，或者利用 PremiumBlockCard 原有的 padding
-            // 确保这里调用了趋势图
             PremiumBlockCard {
                 DailyTrendChart(month, dailyMap, budget)
             }
         }
 
-        //圆环图+分类明细区域
         if (categories.isEmpty()) {
             item {
                 Box(
@@ -237,12 +213,12 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .bounceClick() // 保留您自定义的高级物理弹簧效果
+            .bounceClick()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null // ✨ 核心：彻底屏蔽系统的水波纹选择特效
+                indication = null
             ) { onClick() },
-        color = AppTheme.colors.cardBackground,
+        color = AppTheme.colors.cardBackground, // ✅ 卡片底色
         shape = RoundedCornerShape(20.dp),
         shadowElevation = 1.dp
     ) {
@@ -250,8 +226,21 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(category.icon, fontSize = 20.sp)
                 Spacer(Modifier.width(12.dp))
-                Text(category.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("¥${category.amount}", fontWeight = FontWeight.Black)
+
+                // ✨ 修复点 1：显式指定分类名称的主文字颜色
+                Text(
+                    text = category.name,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.textPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // ✨ 修复点 2：显式指定金额的主文字颜色
+                Text(
+                    text = "¥${category.amount}",
+                    fontWeight = FontWeight.Black,
+                    color = AppTheme.colors.textPrimary
+                )
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -260,13 +249,13 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                         .weight(1f)
                         .height(6.dp)
                         .clip(CircleShape)
-                        // ❌ 修改前：.background(Color(0xFFF1F2F6))
-                        .background(AppTheme.colors.surfaceVariant)
+                        .background(AppTheme.colors.surfaceVariant) // ✅ 进度条底槽色
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(category.percentage)
                             .fillMaxHeight()
+                            // ✨ 完美获取在 AppDesignSystem 里配好的黑金渐变色
                             .background(getPremiumBrush(index))
                     )
                 }
@@ -274,8 +263,7 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                 Text(
                     "${(category.percentage * 100).toInt()}%",
                     fontSize = 12.sp,
-                    // ❌ 修改前：color = Color.Gray
-                    color = AppTheme.colors.textSecondary
+                    color = AppTheme.colors.textSecondary // ✅ 进度百分比文字色
                 )
             }
         }
@@ -283,17 +271,10 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
 }
 
 
-
-
 @Composable
 fun StatItem(label: String, value: String, modifier: Modifier) {
     Column(modifier) {
-        // ❌ 修改前：Text(label, fontSize = 12.sp, color = Color.Gray)
-        Text(label, fontSize = 12.sp, color = AppTheme.colors.textSecondary) // ✅ 修改后
-        // ❌ 修改前：Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.Black)
-        Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = AppTheme.colors.textPrimary) // ✅ 修改后
+        Text(label, fontSize = 12.sp, color = AppTheme.colors.textSecondary)
+        Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = AppTheme.colors.textPrimary)
     }
 }
-
-
-

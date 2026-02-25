@@ -21,41 +21,49 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush // ✨ 新增 Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AccentBlue
-import com.yhx.autoledger.ui.theme.LightBlueGradient
+import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
 
 @Composable
 fun MainBalanceCard(
     expense: String, budget: String, income: String, balance: String, dailyAvg: String,
-    onClick: () -> Unit = {} // ✨ 1. 必须有这个参数
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .height(230.dp)
-            // ⚠️ 外层不要加 clickable，只保留 bounceClick 动画
             .bounceClick(),
         shape = RoundedCornerShape(32.dp),
+        // ✨ 给卡片容器增加默认背景映射，防止边缘漏色
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        // ✨ 2. 终极杀手锏：把点击事件加在最里层的 Box 上！
+        // ✨ 动态组装主题配置的渐变色
+        val dynamicGradient = Brush.linearGradient(
+            colors = listOf(
+                AppTheme.colors.balanceCardGradientStart,
+                AppTheme.colors.balanceCardGradientEnd
+            )
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable { onClick() } // <-- 事件在这里触发，绝对不会失效
-                .background(LightBlueGradient)
+                .clickable { onClick() }
+                .background(dynamicGradient) // ✨ 使用动态渐变替换 LightBlueGradient
         ) {
             // 1. 背景装饰圆（放在底层）
             Surface(
                 modifier = Modifier
                     .size(160.dp)
                     .offset(x = 220.dp, y = (-40).dp),
-                color = Color.White.copy(alpha = 0.4f),
+                color = AppTheme.colors.balanceCardCircleDecoration, // ✨ 替换硬编码透明白
                 shape = CircleShape
             ) {}
 
@@ -70,31 +78,31 @@ fun MainBalanceCard(
                     Column {
                         Text(
                             "本月支出",
-                            color = Color.DarkGray.copy(alpha = 0.6f),
+                            color = AppTheme.colors.balanceCardTextSecondary, // ✨ 替换 DarkGray
                             fontSize = 14.sp
                         )
                         Text(
                             "¥ $expense",
-                            color = Color.Black,
+                            color = AppTheme.colors.balanceCardTextPrimary, // ✨ 替换 Black
                             fontSize = 38.sp,
                             fontWeight = FontWeight.Black
                         )
                     }
                     // 日均展示区
                     Surface(
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = AppTheme.colors.balanceCardDailyAvgBg, // ✨ 替换 White 60%
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                             Text(
                                 "日均可用",
-                                color = AccentBlue,
+                                color = AppTheme.colors.balanceCardDailyAvgText, // ✨ 替换 AccentBlue
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 "¥ $dailyAvg",
-                                color = Color.Black,
+                                color = AppTheme.colors.balanceCardTextPrimary, // ✨ 替换 Black
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -121,7 +129,16 @@ fun MainBalanceCard(
 @Composable
 fun CardDetailItem(label: String, value: String) {
     Column {
-        Text(label, color = Color.DarkGray.copy(alpha = 0.5f), fontSize = 13.sp)
-        Text("¥$value", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(
+            label,
+            color = AppTheme.colors.balanceCardTextSecondary, // ✨ 替换 DarkGray 50%
+            fontSize = 13.sp
+        )
+        Text(
+            "¥$value",
+            color = AppTheme.colors.balanceCardTextPrimary, // ✨ 替换 Black
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

@@ -97,7 +97,7 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentM
     val textColor = if (isCurrentMonth) {
         if (isToday) AppTheme.colors.calendarTodayText else AppTheme.colors.textPrimary
     } else {
-        AppTheme.colors.textTertiary.copy(alpha = 0.3f)
+        AppTheme.colors.textSecondary.copy(alpha = 0.5f)
     }
 
     Column(

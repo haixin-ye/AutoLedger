@@ -46,7 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.data.entity.LedgerEntity
-import com.yhx.autoledger.ui.theme.AccentBlue
+import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale.getDefault
@@ -68,22 +68,17 @@ fun RefinedTransactionItem(
     onLongClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
-    // ✨ 魔法 1：动态悬浮阴影 (Z轴高度变化)
-    // 正常状态是 1.dp 贴近背景，进入多选模式后瞬间抬高到 6.dp，产生“浮起来”的视觉感受
     val animatedElevation by animateDpAsState(
         targetValue = if (isSelectionMode) 6.dp else 1.dp,
         label = "floating_elevation"
     )
 
-    // ✨ 魔法 2：iOS 风格的微小抖动 (Jiggle Animation)
     val infiniteTransition = rememberInfiniteTransition(label = "jiggle_transition")
-
-    // 生成一个 0~120 毫秒的随机错落值，让列表里不同的卡片摇摆节奏不一致，显得更自然生动
     val randomOffset = remember { (0..120).random() }
 
     val rotation by infiniteTransition.animateFloat(
-        initialValue = -0.6f, // 向左倾斜极小的角度
-        targetValue = 0.6f,   // 向右倾斜极小的角度
+        initialValue = -0.6f,
+        targetValue = 0.6f,
         animationSpec = infiniteRepeatable(
             animation = tween(130, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
@@ -96,19 +91,18 @@ fun RefinedTransactionItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            // ✨ 将抖动动画通过 graphicsLayer 应用于 Z 轴旋转
             .graphicsLayer {
                 if (isSelectionMode) {
                     rotationZ = rotation
-                    // 可选：让卡片稍微放大一点点 (1.01倍)，更强化“被拿起来”的感觉
                     scaleX = 1.01f
                     scaleY = 1.01f
                 }
             }
             .bounceClick(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        // ✨ 复用全局卡片底色
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = animatedElevation) // 使用动态阴影
+        elevation = CardDefaults.cardElevation(defaultElevation = animatedElevation)
     ) {
         Row(
             modifier = Modifier
@@ -121,7 +115,6 @@ fun RefinedTransactionItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            // 左侧推入的选择圆圈 (保持上一版的高级滑入效果)
             AnimatedVisibility(
                 visible = isSelectionMode,
                 enter = expandHorizontally(
@@ -138,10 +131,12 @@ fun RefinedTransactionItem(
                         .padding(end = 16.dp)
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(if (isSelected) AccentBlue else Color.Transparent)
+                        // ✨ 选中态背景色复用全局品牌色
+                        .background(if (isSelected) AppTheme.colors.brandAccent else Color.Transparent)
                         .border(
                             width = 1.5.dp,
-                            color = if (isSelected) AccentBlue else Color(0xFFD1D1D6),
+                            // ✨ 边框颜色复用：选中为品牌色，未选中为全局第三级弱灰色
+                            color = if (isSelected) AppTheme.colors.brandAccent else AppTheme.colors.textTertiary,
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -150,14 +145,15 @@ fun RefinedTransactionItem(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = "Selected",
-                            tint = Color.White,
+                            // ✨ 对勾图标复用强调色上的白字配置
+                            tint = AppTheme.colors.textOnAccent,
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
 
-            // 原始图标区域
+            // 原始图标区域 (这里的 data.color 是从分类数据中动态获取的主题色，保持不变)
             Box(
                 Modifier
                     .size(48.dp)
@@ -174,7 +170,8 @@ fun RefinedTransactionItem(
                 Text(
                     text = data.title,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    // ✨ 映射全局主标题色
+                    color = AppTheme.colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -183,13 +180,15 @@ fun RefinedTransactionItem(
                     SimpleDateFormat("HH:mm", getDefault()).format(Date(it.timestamp))
                 } ?: "12:00"
 
-                Text(timeString, fontSize = 12.sp, color = Color.Gray)
+                // ✨ 映射全局副标题色
+                Text(timeString, fontSize = 12.sp, color = AppTheme.colors.textSecondary)
             }
 
             Spacer(Modifier.width(8.dp))
 
             // 金额区域
-            val amountColor = if (data.amount.contains("+")) Color(0xFF00B42A) else Color(0xFFDB1B1B)
+            // ✨ 完美映射全局的收入绿和支出红
+            val amountColor = if (data.amount.contains("+")) AppTheme.colors.incomeColor else AppTheme.colors.expenseColor
             Text(
                 text = data.amount,
                 fontWeight = FontWeight.Black,

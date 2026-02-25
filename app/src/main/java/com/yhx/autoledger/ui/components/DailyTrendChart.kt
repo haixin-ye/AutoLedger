@@ -30,29 +30,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush // ✨ 新增
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb // ✨ 新增 toArgb()
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
 import com.yhx.autoledger.viewmodel.DailyRecord
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.roundToInt
 
-
-//三种表格
 enum class ChartStyle(val label: String) {
     BURNDOWN("消耗"), CURVE("曲线"), BAR("柱状")
 }
-
 
 @Composable
 fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: Double) {
@@ -78,19 +78,35 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
         points
     }
 
-    // ✨ 高级交互状态
     var isDragging by remember { mutableStateOf(false) }
-    var activeIndex by remember { mutableIntStateOf(0) } // 当前选中的天数索引
-    val haptic = LocalHapticFeedback.current // 获取系统的震动反馈器
+    var activeIndex by remember { mutableIntStateOf(0) }
+    val haptic = LocalHapticFeedback.current
+
+    // ✨✨✨ 极其关键：在进入 Canvas 之前，提取所有需要的颜色变量！ ✨✨✨
+    val textPrimaryColor = AppTheme.colors.textPrimary
+    val gridLineColor = AppTheme.colors.chartGridLine
+    val axisTextColor = AppTheme.colors.chartAxisText.toArgb() // 转换为原生 Color Int
+    val limitLineColor = AppTheme.colors.warningRed.copy(alpha = 0.2f) // 复用全局警示红
+
+    val tooltipLineColor = AppTheme.colors.chartTooltipLine
+    val tooltipOuterCircle = AppTheme.colors.chartTooltipCircleOuter
+    val tooltipBubbleBg = AppTheme.colors.chartTooltipBubbleBg
+    val tooltipBubbleText = AppTheme.colors.chartTooltipBubbleText.toArgb() // 转换为原生 Color Int
+
+    // ✨ 动态创建之前硬编码的 ChartPremiumGradient
+    val dynamicChartGradient = Brush.verticalGradient(
+        colors = listOf(AppTheme.colors.chartGradientStart, AppTheme.colors.chartGradientEnd)
+    )
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // --- Header ---
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            Text("日消费趋势", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            // ✨ 复用主文字颜色
+            Text("日消费趋势", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = textPrimaryColor)
             Row(
                 Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF1F3F6))
+                    .background(AppTheme.colors.chartToggleBg) // ✨ 专属色
                     .padding(2.dp)
             ) {
                 listOf(ChartStyle.BURNDOWN, ChartStyle.CURVE, ChartStyle.BAR).forEach { style ->
@@ -98,14 +114,15 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isSelected) Color.White else Color.Transparent)
+                            .background(if (isSelected) AppTheme.colors.chartToggleSelectedBg else Color.Transparent) // ✨ 专属色
                             .clickable { selectedStyle = style }
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             style.label,
                             fontSize = 11.sp,
-                            color = if (isSelected) Color.Black else Color.Gray
+                            // ✨ 专属色
+                            color = if (isSelected) AppTheme.colors.chartToggleSelectedText else AppTheme.colors.chartToggleUnselectedText
                         )
                     }
                 }
@@ -126,7 +143,6 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
             Canvas(
                 Modifier
                     .fillMaxSize()
-                    // ✨ 需求1：长按拦截滑动，吃掉 Pager 的翻页手势
                     .pointerInput(displayDays) {
                         val drawW = size.width - leftPadding
                         val stepX = if (displayDays > 1) drawW / (displayDays - 1) else drawW
@@ -137,14 +153,13 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                                 val newIndex = ((offset.x - leftPadding) / stepX).roundToInt()
                                     .coerceIn(0, displayDays - 1)
                                 activeIndex = newIndex
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress) // 长按成功震动提示
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             },
                             onDrag = { change, _ ->
-                                change.consume() // 核心：吞掉手势，不让外层 Pager 知道你在滑动！
+                                change.consume()
                                 val newIndex =
                                     ((change.position.x - leftPadding) / stepX).roundToInt()
                                         .coerceIn(0, displayDays - 1)
-                                // ✨ 只有跨越到新的一天时，才触发震动，营造刻度齿轮感
                                 if (newIndex != activeIndex) {
                                     activeIndex = newIndex
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -165,20 +180,12 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                 val segments = 4
                 for (i in 0..segments) {
                     val ratio = i.toFloat() / segments
-
                     val yValueStr = if (i == segments) {
-                        // 1. 最高点：严格展示真实极值（保留可能的小数）
-                        if (topVal % 1f == 0f) topVal.toInt().toString() else String.format(
-                            "%.1f",
-                            topVal
-                        )
+                        if (topVal % 1f == 0f) topVal.toInt().toString() else String.format("%.1f", topVal)
                     } else if (i == 0) {
-                        // 2. 最低点：固定显示 0
                         "0"
                     } else {
-                        // 3. 中间刻度：尾数逢 5 或 0 取整
                         val rawValue = topVal * ratio
-                        // 核心算法：除以5后四舍五入，再乘回5，就能保证尾数必定是 0 或 5
                         val roundedValue = (Math.round(rawValue / 5f) * 5).toInt()
                         roundedValue.toString()
                     }
@@ -187,7 +194,7 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
 
                     if (i > 0) {
                         drawLine(
-                            color = Color.LightGray.copy(alpha = 0.3f),
+                            color = gridLineColor, // ✨ 使用提取的网格色
                             start = Offset(leftPadding, yPos),
                             end = Offset(size.width, yPos),
                             strokeWidth = 2f,
@@ -199,10 +206,9 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                         yValueStr,
                         0f,
                         yPos + 10f,
-                        Paint().apply { color = android.graphics.Color.LTGRAY; textSize = 24f }
+                        Paint().apply { color = axisTextColor; textSize = 24f } // ✨ 使用原生转换色
                     )
                 }
-
 
                 // X 轴日期
                 val xLabels = (1..displayDays step 7).toMutableList()
@@ -216,8 +222,7 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                         x,
                         size.height - 5f,
                         Paint().apply {
-                            color = android.graphics.Color.LTGRAY; textSize = 24f; textAlign =
-                            Paint.Align.CENTER
+                            color = axisTextColor; textSize = 24f; textAlign = Paint.Align.CENTER // ✨ 使用原生转换色
                         }
                     )
                 }
@@ -233,17 +238,16 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                         }
                         drawPath(
                             path,
-                            brush = ChartPremiumGradient,
+                            brush = dynamicChartGradient, // ✨ 使用动态渐变色替代写死的 ChartPremiumGradient
                             style = Stroke(8f, cap = StrokeCap.Round)
                         )
                         drawLine(
-                            Color.Red.copy(0.2f),
+                            limitLineColor, // ✨ 使用提取的底线色
                             Offset(leftPadding, drawH),
                             Offset(size.width, drawH),
                             2f
                         )
                     }
-
                     ChartStyle.CURVE -> {
                         val path = Path()
                         expenses.forEachIndexed { i, v ->
@@ -253,17 +257,16 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                         }
                         drawPath(
                             path,
-                            brush = ChartPremiumGradient,
+                            brush = dynamicChartGradient, // ✨
                             style = Stroke(6f, cap = StrokeCap.Round)
                         )
                     }
-
                     ChartStyle.BAR -> {
                         expenses.forEachIndexed { i, v ->
                             val barH = (v / topVal) * (drawH - 20f)
                             val barWidth = (stepX * 0.6f).coerceAtMost(40f)
                             drawRoundRect(
-                                brush = ChartPremiumGradient,
+                                brush = dynamicChartGradient, // ✨
                                 topLeft = Offset(
                                     leftPadding + i * stepX - barWidth / 2,
                                     drawH - barH
@@ -276,56 +279,51 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                 }
             }
 
-            // ✨ 需求4：从底层 Canvas 剥离动画层，使用 Compose 原生动画制造弹簧阻尼感
+            // ✨ 高亮浮层
             val tooltipAlpha by animateFloatAsState(
                 targetValue = if (isDragging) 1f else 0f,
-                animationSpec = tween(durationMillis = 200) // 柔和的淡入淡出
+                animationSpec = tween(durationMillis = 200)
             )
 
-            // 如果处于显示状态，叠加绘制高亮浮层
             if (tooltipAlpha > 0f) {
                 Canvas(Modifier.fillMaxSize()) {
                     val drawW = size.width - leftPadding
                     val stepX = if (displayDays > 1) drawW / (displayDays - 1) else drawW
-                    val topVal =
-                        if (selectedStyle == ChartStyle.BURNDOWN) budget.toFloat() else maxExpense
+                    val topVal = if (selectedStyle == ChartStyle.BURNDOWN) budget.toFloat() else maxExpense
 
                     val targetX = leftPadding + activeIndex * stepX
-                    val highlightVal =
-                        if (selectedStyle == ChartStyle.BURNDOWN) burnDownPoints[activeIndex] else expenses[activeIndex]
-                    val targetY =
-                        (size.height - bottomPadding) - (highlightVal.coerceAtLeast(0f) / topVal) * ((size.height - bottomPadding) - 20f)
+                    val highlightVal = if (selectedStyle == ChartStyle.BURNDOWN) burnDownPoints[activeIndex] else expenses[activeIndex]
+                    val targetY = (size.height - bottomPadding) - (highlightVal.coerceAtLeast(0f) / topVal) * ((size.height - bottomPadding) - 20f)
 
-                    // 1. 绘制半透明实线指示器 (需求3)
+                    // 1. 垂直跟随线
                     drawLine(
-                        color = Color(0xFF8FD3F4).copy(alpha = 0.5f * tooltipAlpha),
+                        color = tooltipLineColor.copy(alpha = 0.5f * tooltipAlpha), // ✨
                         start = Offset(targetX, 0f),
                         end = Offset(targetX, size.height - bottomPadding),
-                        strokeWidth = 4f // 适当加粗质感更好
+                        strokeWidth = 4f
                     )
 
-                    // 2. 绘制高亮圆点
+                    // 2. 高亮圆点
                     drawCircle(
-                        color = Color.White.copy(alpha = tooltipAlpha),
+                        color = tooltipOuterCircle.copy(alpha = tooltipAlpha), // ✨
                         radius = 14f,
                         center = Offset(targetX, targetY)
                     )
                     drawCircle(
-                        color = Color(0xFF8FD3F4).copy(alpha = tooltipAlpha),
+                        color = tooltipLineColor.copy(alpha = tooltipAlpha), // ✨ (内圆使用和跟随线同样的颜色)
                         radius = 8f,
                         center = Offset(targetX, targetY)
                     )
 
-                    // 3. 绘制跟随浮窗
+                    // 3. 气泡与文字
                     val labelText = if (selectedStyle == ChartStyle.BURNDOWN) "剩余" else "支出"
-                    val valStr = if (highlightVal % 1 == 0f) highlightVal.toInt()
-                        .toString() else String.format("%.1f", highlightVal)
+                    val valStr = if (highlightVal % 1 == 0f) highlightVal.toInt().toString() else String.format("%.1f", highlightVal)
                     val tooltipText = "${activeIndex + 1}日 $labelText: ¥$valStr"
 
                     val paint = Paint().apply {
                         textSize = 32f
-                        color = android.graphics.Color.WHITE
-                        alpha = (255 * tooltipAlpha).toInt() // 根据动画动态控制透明度
+                        color = tooltipBubbleText // ✨ 使用转换后的气泡文字色
+                        alpha = (255 * tooltipAlpha).toInt()
                         textAlign = Paint.Align.CENTER
                         isFakeBoldText = true
                     }
@@ -335,7 +333,6 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                     val boxWidth = textBounds.width() + 40f
                     val boxHeight = textBounds.height() + 30f
 
-                    // 智能边界处理
                     var boxX = targetX
                     if (boxX - boxWidth / 2 < leftPadding) boxX = leftPadding + boxWidth / 2
                     if (boxX + boxWidth / 2 > size.width) boxX = size.width - boxWidth / 2
@@ -343,14 +340,15 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                     var boxY = targetY - 60f
                     if (boxY - boxHeight < 0) boxY = targetY + boxHeight + 30f
 
-                    // 绘制高级深色磨砂气泡
+                    // 绘制气泡底图
                     drawRoundRect(
-                        color = Color(0xFF2D3436).copy(alpha = 0.9f * tooltipAlpha),
+                        color = tooltipBubbleBg.copy(alpha = 0.9f * tooltipAlpha), // ✨
                         topLeft = Offset(boxX - boxWidth / 2, boxY - boxHeight),
                         size = Size(boxWidth, boxHeight),
                         cornerRadius = CornerRadius(16f)
                     )
 
+                    // 绘制气泡文字
                     drawContext.canvas.nativeCanvas.drawText(
                         tooltipText,
                         boxX,
@@ -362,4 +360,3 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
         }
     }
 }
-
