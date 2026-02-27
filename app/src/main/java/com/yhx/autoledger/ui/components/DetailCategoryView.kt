@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.data.entity.LedgerEntity
 import com.yhx.autoledger.models.CategoryPercentage
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -69,7 +69,7 @@ fun CategoryDetailView(
     Column(Modifier
         .fillMaxSize()
         // ✨ 复用全局大背景
-        .background(AppTheme.colors.appBackground)) {
+        .background(AppDesignSystem.colors.appBackground)) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -78,21 +78,21 @@ fun CategoryDetailView(
         ) {
             IconButton(onClick = onBack) {
                 // ✨ 明确指定返回按钮的颜色，适配深色模式
-                Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = AppTheme.colors.textPrimary)
+                Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = AppDesignSystem.colors.textPrimary)
             }
             // ✨ 复用全局主文本色
             Text(
                 "${category.name} 明细",
                 fontWeight = FontWeight.Black,
                 fontSize = 18.sp,
-                color = AppTheme.colors.textPrimary
+                color = AppDesignSystem.colors.textPrimary
             )
             Spacer(modifier = Modifier.weight(1f))
             // ✨ 复用全局次要文本色
             Text(
                 "共 ${categoryLedgers.size} 笔",
                 fontSize = 13.sp,
-                color = AppTheme.colors.textSecondary
+                color = AppDesignSystem.colors.textSecondary
             )
         }
 
@@ -151,7 +151,7 @@ fun DetailedTransactionItem(ledger: LedgerEntity, themeColor: Color, onClick: ()
                 indication = null
             ) { onClick() },
         // ✨ 复用全局卡片背景色
-        color = AppTheme.colors.cardBackground,
+        color = AppDesignSystem.colors.cardBackground,
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 0.5.dp
     ) {
@@ -166,7 +166,12 @@ fun DetailedTransactionItem(ledger: LedgerEntity, themeColor: Color, onClick: ()
                     .background(themeColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(ledger.categoryIcon ?: "🏷️", fontSize = 20.sp)
+                // ✨ 核心替换
+                CategoryIcon(
+                    iconName = ledger.categoryIcon ?: "🏷️",
+                    modifier = Modifier.size(22.dp),
+                    tint = themeColor
+                )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -177,7 +182,7 @@ fun DetailedTransactionItem(ledger: LedgerEntity, themeColor: Color, onClick: ()
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     // ✨ 复用全局主文本色
-                    color = AppTheme.colors.textPrimary,
+                    color = AppDesignSystem.colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -186,7 +191,7 @@ fun DetailedTransactionItem(ledger: LedgerEntity, themeColor: Color, onClick: ()
                     text = timeString,
                     fontSize = 12.sp,
                     // ✨ 复用全局次要文本色
-                    color = AppTheme.colors.textSecondary
+                    color = AppDesignSystem.colors.textSecondary
                 )
             }
 
@@ -195,7 +200,7 @@ fun DetailedTransactionItem(ledger: LedgerEntity, themeColor: Color, onClick: ()
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Black,
                 // ✨ 复用全局主文本色 (或者如果后续你想区分收入/支出，这里可以用 expenseColor，目前按原逻辑保持为 Primary)
-                color = AppTheme.colors.textPrimary
+                color = AppDesignSystem.colors.textPrimary
             )
         }
     }

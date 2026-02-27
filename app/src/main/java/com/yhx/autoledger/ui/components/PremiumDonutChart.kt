@@ -24,20 +24,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.models.CategoryPercentage
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import kotlin.math.max
-import kotlin.math.min
 
 @Composable
 fun getPremiumBrush(index: Int): Brush {
-    val palette = AppTheme.colors.donutChartPalette
+    val palette = AppDesignSystem.colors.donutChartPalette
     val colors = palette[index % palette.size]
     return Brush.linearGradient(listOf(colors.first, colors.second))
 }
 
 @Composable
 fun getPremiumBaseColor(index: Int): Color {
-    val palette = AppTheme.colors.donutChartPalette
+    val palette = AppDesignSystem.colors.donutChartPalette
     return palette[index % palette.size].first
 }
 
@@ -63,7 +62,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
             contentAlignment = Alignment.Center,
             modifier = Modifier.weight(1.3f)
         ) {
-            val trackColor = AppTheme.colors.donutChartTrack
+            val trackColor = AppDesignSystem.colors.donutChartTrack
             val brushes = data.mapIndexed { index, _ -> getPremiumBrush(index) }
             val singleBrush = if (data.size == 1) getPremiumBrush(0) else null
 
@@ -129,7 +128,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                 Text(
                     text = "总支出",
                     fontSize = 12.sp,
-                    color = AppTheme.colors.donutChartTextSecondary,
+                    color = AppDesignSystem.colors.donutChartTextSecondary,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(Modifier.height(4.dp))
@@ -138,14 +137,14 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                         text = "¥",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.donutChartTextPrimary,
+                        color = AppDesignSystem.colors.donutChartTextPrimary,
                         modifier = Modifier.padding(bottom = 2.dp, end = 2.dp)
                     )
                     Text(
                         text = totalExpense,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = AppTheme.colors.donutChartTextPrimary,
+                        color = AppDesignSystem.colors.donutChartTextPrimary,
                         letterSpacing = (-0.5).sp
                     )
                 }
@@ -186,7 +185,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                         text = item.name,
                         fontSize = (13 * scale).sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary,
+                        color = AppDesignSystem.colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -198,7 +197,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                     Text(
                         text = "${(item.percentage * 100).toInt()}%",
                         fontSize = (13 * scale).sp,
-                        color = AppTheme.colors.textSecondary,
+                        color = AppDesignSystem.colors.textSecondary,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -209,7 +208,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                 Text(
                     text = "等共 ${data.size} 项",
                     fontSize = (10 * scale).sp,
-                    color = AppTheme.colors.textTertiary,
+                    color = AppDesignSystem.colors.textTertiary,
                     modifier = Modifier.align(Alignment.End).padding(top = 2.dp)
                 )
             }

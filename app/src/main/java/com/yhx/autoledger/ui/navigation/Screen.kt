@@ -5,6 +5,8 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.ImportExport
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
@@ -13,6 +15,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object AI : Screen("ai", "AI助手", Icons.Default.Face) // 或者是麦克风图标
     object Settings : Screen("settings", "我的", Icons.Default.Settings)
 
+    object DataImportExport : Screen("data_import_export", "导入导出", Icons.Rounded.ImportExport)
+
+    object CategoryManage : Screen("category_manage", "分类管理", Icons.Rounded.Category)
 //    // 传递 categoryName 和主题色 index
 //    object CategoryDetail : Screen("category_detail/{categoryName}/{colorIndex}", "分类详情", Icons.Default.List) {
 //        fun createRoute(categoryName: String, colorIndex: Int) = "category_detail/$categoryName/$colorIndex"

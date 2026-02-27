@@ -29,13 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.viewmodel.DailyRecord
-import com.yhx.autoledger.viewmodel.MonthlyRecord
 import java.time.YearMonth
 import java.util.Calendar
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.ui.text.style.TextOverflow
+
 // ✨ 日历显示支出和收入
 // ✨ 增加 onDayClick 回调
 @Composable
@@ -52,7 +50,7 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>, onDayClick: 
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             listOf("日", "一", "二", "三", "四", "五", "六").forEach {
-                Text(it, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = AppTheme.colors.textSecondary)
+                Text(it, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = AppDesignSystem.colors.textSecondary)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -105,9 +103,9 @@ fun CalendarDayCell(
     onDayClick: (Int) -> Unit // ✨ 新增参数
 ) {
     val textColor = if (isCurrentMonth) {
-        if (isToday) AppTheme.colors.calendarTodayText else AppTheme.colors.textPrimary
+        if (isToday) AppDesignSystem.colors.calendarTodayText else AppDesignSystem.colors.textPrimary
     } else {
-        AppTheme.colors.textSecondary.copy(alpha = 0.5f)
+        AppDesignSystem.colors.textSecondary.copy(alpha = 0.5f)
     }
 
     Column(
@@ -118,7 +116,7 @@ fun CalendarDayCell(
             .height(46.dp)
             .clip(RoundedCornerShape(8.dp)) // ✨ 切圆角，防止点击水波纹溢出方格
             .background(
-                if (isToday) AppTheme.colors.calendarTodayBackground else Color.Transparent,
+                if (isToday) AppDesignSystem.colors.calendarTodayBackground else Color.Transparent,
             )
             .clickable(
                 enabled = isCurrentMonth, // ✨ 只有当前月份的日子允许被点击
@@ -140,7 +138,7 @@ fun CalendarDayCell(
                 text = "${if (netAmount >= 0) "+" else "-"}${Math.abs(netAmount).toInt()}",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = (if (netAmount >= 0) AppTheme.colors.incomeColor else AppTheme.colors.expenseColor).copy(alpha = 0.7f),
+                color = (if (netAmount >= 0) AppDesignSystem.colors.incomeColor else AppDesignSystem.colors.expenseColor).copy(alpha = 0.7f),
                 maxLines = 1
             )
         } else {
@@ -168,13 +166,13 @@ fun DetailTopBar(month: YearMonth, onMonthClick: () -> Unit) {
             text = "账单明细",
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
-            color = AppTheme.colors.textPrimary,
+            color = AppDesignSystem.colors.textPrimary,
             letterSpacing = 1.sp
         )
 
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = AppTheme.colors.brandAccent.copy(alpha = 0.1f)
+            color = AppDesignSystem.colors.brandAccent.copy(alpha = 0.1f)
         ) {
             Row(
                 modifier = Modifier
@@ -190,13 +188,13 @@ fun DetailTopBar(month: YearMonth, onMonthClick: () -> Unit) {
                     text = "${month.year}年${month.monthValue}月",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.brandAccent
+                    color = AppDesignSystem.colors.brandAccent
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = Icons.Rounded.KeyboardArrowDown,
                     contentDescription = "选择月份",
-                    tint = AppTheme.colors.brandAccent,
+                    tint = AppDesignSystem.colors.brandAccent,
                     modifier = Modifier.size(20.dp)
                 )
             }

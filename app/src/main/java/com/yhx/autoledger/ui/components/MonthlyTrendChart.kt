@@ -43,7 +43,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.viewmodel.MonthlyRecord
 import kotlin.math.roundToInt
 
@@ -63,32 +63,32 @@ fun MonthlyTrendChart(year: Int, monthlyMap: Map<Int, MonthlyRecord>, budget: Do
     var activeIndex by remember { mutableIntStateOf(0) }
     val haptic = LocalHapticFeedback.current
 
-    val textPrimaryColor = AppTheme.colors.textPrimary
-    val gridLineColor = AppTheme.colors.chartGridLine
-    val axisTextColor = AppTheme.colors.chartAxisText.toArgb()
+    val textPrimaryColor = AppDesignSystem.colors.textPrimary
+    val gridLineColor = AppDesignSystem.colors.chartGridLine
+    val axisTextColor = AppDesignSystem.colors.chartAxisText.toArgb()
 
-    val tooltipLineColor = AppTheme.colors.chartTooltipLine
-    val tooltipBubbleBg = AppTheme.colors.chartTooltipBubbleBg
-    val tooltipBubbleText = AppTheme.colors.chartTooltipBubbleText.toArgb()
+    val tooltipLineColor = AppDesignSystem.colors.chartTooltipLine
+    val tooltipBubbleBg = AppDesignSystem.colors.chartTooltipBubbleBg
+    val tooltipBubbleText = AppDesignSystem.colors.chartTooltipBubbleText.toArgb()
 
-    val incomeColor = AppTheme.colors.incomeColor
-    val expenseColor = AppTheme.colors.expenseColor
-    val brandAccent=AppTheme.colors.brandAccent
-    val chartTooltipCircleOuter=AppTheme.colors.chartTooltipCircleOuter
+    val incomeColor = AppDesignSystem.colors.incomeColor
+    val expenseColor = AppDesignSystem.colors.expenseColor
+    val brandAccent=AppDesignSystem.colors.brandAccent
+    val chartTooltipCircleOuter=AppDesignSystem.colors.chartTooltipCircleOuter
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text("月结余趋势", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = textPrimaryColor)
-            Row(Modifier.clip(RoundedCornerShape(8.dp)).background(AppTheme.colors.chartToggleBg).padding(2.dp)) {
+            Row(Modifier.clip(RoundedCornerShape(8.dp)).background(AppDesignSystem.colors.chartToggleBg).padding(2.dp)) {
                 // ✨ 结余图表不需要“消耗”模式，只留柱状和曲线
                 listOf(ChartStyle.BAR, ChartStyle.CURVE).forEach { style ->
                     val isSelected = selectedStyle == style
                     Box(
                         Modifier.clip(RoundedCornerShape(6.dp))
-                            .background(if (isSelected) AppTheme.colors.chartToggleSelectedBg else Color.Transparent)
+                            .background(if (isSelected) AppDesignSystem.colors.chartToggleSelectedBg else Color.Transparent)
                             .clickable { selectedStyle = style }
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Text(style.label, fontSize = 11.sp, color = if (isSelected) AppTheme.colors.chartToggleSelectedText else AppTheme.colors.chartToggleUnselectedText)
+                        Text(style.label, fontSize = 11.sp, color = if (isSelected) AppDesignSystem.colors.chartToggleSelectedText else AppDesignSystem.colors.chartToggleUnselectedText)
                     }
                 }
             }

@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.models.MonthlyStats
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
 
 // ✨ 1. 统一的高级自适应白卡容器
 @Composable
@@ -41,7 +41,7 @@ fun PremiumBlockCard(
             .padding(horizontal = 20.dp, vertical = 6.dp),
         shape = RoundedCornerShape(24.dp),
         // ✨ 复用全局卡片背景色
-        color = AppTheme.colors.cardBackground,
+        color = AppDesignSystem.colors.cardBackground,
         shadowElevation = 2.dp,
         content = {
             Column(
@@ -57,16 +57,16 @@ fun PremiumBlockCard(
 @Composable
 fun DataOverviewSection(stats: MonthlyStats, budget: Double, isYearView: Boolean = false) {
     // ✨ 提前提取颜色变量，彻底解决 @Composable invocation 报错
-    val textPrimary = AppTheme.colors.textPrimary
-    val textSecondary = AppTheme.colors.textSecondary
-    val indicatorColor = AppTheme.colors.overviewIndicatorColor
-    val surfaceVariant = AppTheme.colors.surfaceVariant
-    val dividerColor = AppTheme.colors.dividerColor
-    val subPanelBg = AppTheme.colors.overviewSubPanelBg
-    val incomeColor = AppTheme.colors.incomeColor
-    val expenseColor = AppTheme.colors.expenseColor
-    val gradientEnd = AppTheme.colors.chartGradientEnd
-    val gradientStart = AppTheme.colors.chartGradientStart
+    val textPrimary = AppDesignSystem.colors.textPrimary
+    val textSecondary = AppDesignSystem.colors.textSecondary
+    val indicatorColor = AppDesignSystem.colors.overviewIndicatorColor
+    val surfaceVariant = AppDesignSystem.colors.surfaceVariant
+    val dividerColor = AppDesignSystem.colors.dividerColor
+    val subPanelBg = AppDesignSystem.colors.overviewSubPanelBg
+    val incomeColor = AppDesignSystem.colors.incomeColor
+    val expenseColor = AppDesignSystem.colors.expenseColor
+    val gradientEnd = AppDesignSystem.colors.chartGradientEnd
+    val gradientStart = AppDesignSystem.colors.chartGradientStart
 
     val expense = stats.totalExpense.toDoubleOrNull() ?: 0.0
     val income = stats.totalIncome.toDoubleOrNull() ?: 0.0
@@ -136,7 +136,7 @@ fun DataOverviewSection(stats: MonthlyStats, budget: Double, isYearView: Boolean
 fun DataMiniBox(label: String, value: String, color: Color) {
     Column {
         // ✨ 复用次要文本色
-        Text(label, fontSize = 11.sp, color = AppTheme.colors.textSecondary)
+        Text(label, fontSize = 11.sp, color = AppDesignSystem.colors.textSecondary)
         Spacer(Modifier.height(2.dp))
         Text(value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = color)
     }

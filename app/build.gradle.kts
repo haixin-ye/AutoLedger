@@ -88,4 +88,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    // Google Gson 用于数据序列化
+    implementation("com.google.code.gson:gson:2.10.1")
 }

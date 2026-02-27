@@ -33,12 +33,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
 import java.time.YearMonth
 
 @Composable
@@ -54,7 +53,7 @@ fun YearMonthPickerDialog(
         Surface(
             shape = RoundedCornerShape(20.dp),
             // ✨ 复用全局卡片/弹窗背景色
-            color = AppTheme.colors.cardBackground,
+            color = AppDesignSystem.colors.cardBackground,
             shadowElevation = 8.dp
         ) {
             Column(
@@ -69,18 +68,18 @@ fun YearMonthPickerDialog(
                 ) {
                     IconButton(onClick = { selectedYear-- }) {
                         // ✨ 显式指定图标颜色，适配深色模式
-                        Icon(Icons.Default.ChevronLeft, contentDescription = "上一年", tint = AppTheme.colors.textPrimary)
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "上一年", tint = AppDesignSystem.colors.textPrimary)
                     }
                     Text(
                         text = "$selectedYear 年",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         // ✨ 复用主文本色
-                        color = AppTheme.colors.textPrimary
+                        color = AppDesignSystem.colors.textPrimary
                     )
                     IconButton(onClick = { selectedYear++ }) {
                         // ✨ 显式指定图标颜色
-                        Icon(Icons.Default.ChevronRight, contentDescription = "下一年", tint = AppTheme.colors.textPrimary)
+                        Icon(Icons.Default.ChevronRight, contentDescription = "下一年", tint = AppDesignSystem.colors.textPrimary)
                     }
                 }
 
@@ -104,7 +103,7 @@ fun YearMonthPickerDialog(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 // ✨ 选中态用品牌色，未选中用表层灰槽色
-                                .background(if (isSelected) AppTheme.colors.brandAccent else AppTheme.colors.surfaceVariant)
+                                .background(if (isSelected) AppDesignSystem.colors.brandAccent else AppDesignSystem.colors.surfaceVariant)
                                 .clickable { selectedMonth = month }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center
@@ -114,7 +113,7 @@ fun YearMonthPickerDialog(
                                 fontSize = 14.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 // ✨ 选中时用白色(OnAccent)，未选中时用主文本色
-                                color = if (isSelected) AppTheme.colors.textOnAccent else AppTheme.colors.textPrimary
+                                color = if (isSelected) AppDesignSystem.colors.textOnAccent else AppDesignSystem.colors.textPrimary
                             )
                         }
                     }
@@ -129,17 +128,17 @@ fun YearMonthPickerDialog(
                 ) {
                     TextButton(onClick = onDismiss) {
                         // ✨ 复用次要文本色
-                        Text("取消", color = AppTheme.colors.textSecondary)
+                        Text("取消", color = AppDesignSystem.colors.textSecondary)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onConfirm(YearMonth.of(selectedYear, selectedMonth)) },
                         // ✨ 复用品牌色
-                        colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.brandAccent),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppDesignSystem.colors.brandAccent),
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         // ✨ 显式指定白色
-                        Text("确定", color = AppTheme.colors.textOnAccent)
+                        Text("确定", color = AppDesignSystem.colors.textOnAccent)
                     }
                 }
             }

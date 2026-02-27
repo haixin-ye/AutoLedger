@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.ui.navigation.bottomNavItems
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 
 @Composable
 fun MainBottomBar(
@@ -34,7 +34,7 @@ fun MainBottomBar(
     onNavigate: (String) -> Unit
 ) {
     Surface(
-        color = AppTheme.colors.bottomBarBackground.copy(alpha = 0.95f),
+        color = AppDesignSystem.colors.bottomBarBackground.copy(alpha = 0.95f),
         tonalElevation = 8.dp,
         shadowElevation = 16.dp,
         // ✨ 修改点 1：移除这里的 navigationBarsPadding()
@@ -54,7 +54,7 @@ fun MainBottomBar(
                 val selected = currentRoute == screen.route
 
                 val contentColor by animateColorAsState(
-                    targetValue = if (selected) AppTheme.colors.brandAccent else AppTheme.colors.textTertiary,
+                    targetValue = if (selected) AppDesignSystem.colors.brandAccent else AppDesignSystem.colors.textTertiary,
                     animationSpec = tween(durationMillis = 300),
                     label = "colorAnimation"
                 )

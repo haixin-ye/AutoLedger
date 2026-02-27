@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.data.entity.LedgerEntity
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.ui.theme.CategoryFood
 import com.yhx.autoledger.ui.theme.CategoryOther
 import com.yhx.autoledger.ui.theme.CategoryShop
@@ -63,7 +63,7 @@ fun DailyDetailView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppTheme.colors.appBackground)
+            .background(AppDesignSystem.colors.appBackground)
     ) {
         // 顶部栏
         Row(
@@ -76,7 +76,7 @@ fun DailyDetailView(
                 Icon(
                     imageVector = Icons.Rounded.KeyboardArrowLeft,
                     contentDescription = "返回",
-                    tint = AppTheme.colors.textPrimary,
+                    tint = AppDesignSystem.colors.textPrimary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -84,14 +84,14 @@ fun DailyDetailView(
                 text = "${month.monthValue}月${day}日 账单明细",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.textPrimary,
+                color = AppDesignSystem.colors.textPrimary,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
 
         if (dayLedgers.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("这一天没有记账哦 🍃", color = AppTheme.colors.textSecondary)
+                Text("这一天没有记账哦 🍃", color = AppDesignSystem.colors.textSecondary)
             }
         } else {
             LazyColumn(

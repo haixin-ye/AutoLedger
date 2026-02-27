@@ -30,7 +30,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 // 提供便捷的单例访问入口，以后代码里就用 AppTheme.colors 和 AppTheme.dimens
-object AppTheme {
+object AppDesignSystem {
     val colors: AppExtendedColors
         @Composable
         get() = LocalAppColors.current

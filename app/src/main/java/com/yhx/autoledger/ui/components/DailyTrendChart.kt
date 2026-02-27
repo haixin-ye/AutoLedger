@@ -44,7 +44,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
 import com.yhx.autoledger.viewmodel.DailyRecord
 import java.time.LocalDate
 import java.time.YearMonth
@@ -83,19 +83,19 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
     val haptic = LocalHapticFeedback.current
 
     // ✨✨✨ 极其关键：在进入 Canvas 之前，提取所有需要的颜色变量！ ✨✨✨
-    val textPrimaryColor = AppTheme.colors.textPrimary
-    val gridLineColor = AppTheme.colors.chartGridLine
-    val axisTextColor = AppTheme.colors.chartAxisText.toArgb() // 转换为原生 Color Int
-    val limitLineColor = AppTheme.colors.warningRed.copy(alpha = 0.2f) // 复用全局警示红
+    val textPrimaryColor = AppDesignSystem.colors.textPrimary
+    val gridLineColor = AppDesignSystem.colors.chartGridLine
+    val axisTextColor = AppDesignSystem.colors.chartAxisText.toArgb() // 转换为原生 Color Int
+    val limitLineColor = AppDesignSystem.colors.warningRed.copy(alpha = 0.2f) // 复用全局警示红
 
-    val tooltipLineColor = AppTheme.colors.chartTooltipLine
-    val tooltipOuterCircle = AppTheme.colors.chartTooltipCircleOuter
-    val tooltipBubbleBg = AppTheme.colors.chartTooltipBubbleBg
-    val tooltipBubbleText = AppTheme.colors.chartTooltipBubbleText.toArgb() // 转换为原生 Color Int
+    val tooltipLineColor = AppDesignSystem.colors.chartTooltipLine
+    val tooltipOuterCircle = AppDesignSystem.colors.chartTooltipCircleOuter
+    val tooltipBubbleBg = AppDesignSystem.colors.chartTooltipBubbleBg
+    val tooltipBubbleText = AppDesignSystem.colors.chartTooltipBubbleText.toArgb() // 转换为原生 Color Int
 
     // ✨ 动态创建之前硬编码的 ChartPremiumGradient
     val dynamicChartGradient = Brush.verticalGradient(
-        colors = listOf(AppTheme.colors.chartGradientStart, AppTheme.colors.chartGradientEnd)
+        colors = listOf(AppDesignSystem.colors.chartGradientStart, AppDesignSystem.colors.chartGradientEnd)
     )
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -106,7 +106,7 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
             Row(
                 Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(AppTheme.colors.chartToggleBg) // ✨ 专属色
+                    .background(AppDesignSystem.colors.chartToggleBg) // ✨ 专属色
                     .padding(2.dp)
             ) {
                 listOf(ChartStyle.BURNDOWN, ChartStyle.CURVE, ChartStyle.BAR).forEach { style ->
@@ -114,7 +114,7 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isSelected) AppTheme.colors.chartToggleSelectedBg else Color.Transparent) // ✨ 专属色
+                            .background(if (isSelected) AppDesignSystem.colors.chartToggleSelectedBg else Color.Transparent) // ✨ 专属色
                             .clickable { selectedStyle = style }
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
@@ -122,7 +122,7 @@ fun DailyTrendChart(month: YearMonth, dailyMap: Map<Int, DailyRecord>, budget: D
                             style.label,
                             fontSize = 11.sp,
                             // ✨ 专属色
-                            color = if (isSelected) AppTheme.colors.chartToggleSelectedText else AppTheme.colors.chartToggleUnselectedText
+                            color = if (isSelected) AppDesignSystem.colors.chartToggleSelectedText else AppDesignSystem.colors.chartToggleUnselectedText
                         )
                     }
                 }

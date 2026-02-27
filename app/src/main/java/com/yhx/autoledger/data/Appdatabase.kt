@@ -1,5 +1,6 @@
 package com.yhx.autoledger.data
 
+import android.R.attr.name
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
@@ -23,7 +24,6 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // 供 Hilt 调用的获取数据库实例的方法
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -31,10 +31,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "autoledger_db"
                 )
-                    // 核心：添加回调，在数据库首次创建时注入默认数据
                     .addCallback(DatabaseCallback())
                     .build()
-
                 INSTANCE = instance
                 instance
             }
@@ -43,22 +41,39 @@ abstract class AppDatabase : RoomDatabase() {
         private class DatabaseCallback : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
-                // 数据库第一次被创建时触发
                 INSTANCE?.let { database ->
-                    // 必须在后台协程中执行插入操作
                     CoroutineScope(Dispatchers.IO).launch {
                         val dao = database.categoryDao()
-                        // 预设的经典款式
+                        // ✨ 核心修改：将 ic_xx 直接改为 Emoji 字符串
                         val defaultCategories = listOf(
-                            CategoryEntity(name = "餐饮", iconName = "ic_food", type = 0, isSystemDefault = true),
-                            CategoryEntity(name = "交通", iconName = "ic_transport", type = 0, isSystemDefault = true),
-                            CategoryEntity(name = "购物", iconName = "ic_shopping", type = 0, isSystemDefault = true),
-                            CategoryEntity(name = "娱乐", iconName = "ic_entertainment", type = 0, isSystemDefault = true),
-                            CategoryEntity(name = "居家", iconName = "ic_home", type = 0, isSystemDefault = true),
-                            CategoryEntity(name = "工资", iconName = "ic_salary", type = 1, isSystemDefault = true),
-                            CategoryEntity(name = "理财", iconName = "ic_investment", type = 1, isSystemDefault = true)
+                            // 支出类 (type = 0)
+                            CategoryEntity(name = "餐饮", iconName = "🍱", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "交通", iconName = "🚗", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "购物", iconName = "🛒", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "娱乐", iconName = "🎮", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "居家", iconName = "🏠", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "还款", iconName = "💳", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "医疗", iconName = "💊", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "人情", iconName = "🧧", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "通讯", iconName = "📱", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "零食", iconName = "🍫", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "学习", iconName = "📚", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "宠物", iconName = "🐾", type = 0, isSystemDefault = true),
+                            CategoryEntity(name = "其它", iconName = "⚙️", type = 0, isSystemDefault = true),
+
+                            // 收入类 (type = 1)
+                            CategoryEntity(name = "工资", iconName = "💰", type = 1, isSystemDefault = true),
+                            CategoryEntity(name = "理财", iconName = "📈", type = 1, isSystemDefault = true),
+                            CategoryEntity(name = "兼职", iconName = "💼", type = 1, isSystemDefault = true),
+                            CategoryEntity(name = "红包", iconName = "🧧", type = 1, isSystemDefault = true),
+                            CategoryEntity(name = "报销", iconName = "🧾", type = 1, isSystemDefault = true),
+                            CategoryEntity(name = "退款", iconName = "🔄", type = 1, isSystemDefault = true),
+                            CategoryEntity(name = "奖金", iconName = "🏆", type = 1, isSystemDefault = true),
+                            CategoryEntity(name = "其它", iconName = "⚙️", type = 1, isSystemDefault = true)
                         )
                         dao.insertAll(defaultCategories)
+
+
                     }
                 }
             }

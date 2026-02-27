@@ -46,7 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.data.entity.LedgerEntity
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale.getDefault
@@ -100,7 +100,7 @@ fun RefinedTransactionItem(
             }
             .bounceClick(),
         // ✨ 复用全局卡片底色
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppDesignSystem.colors.cardBackground),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = animatedElevation)
     ) {
@@ -132,11 +132,11 @@ fun RefinedTransactionItem(
                         .size(24.dp)
                         .clip(CircleShape)
                         // ✨ 选中态背景色复用全局品牌色
-                        .background(if (isSelected) AppTheme.colors.brandAccent else Color.Transparent)
+                        .background(if (isSelected) AppDesignSystem.colors.brandAccent else Color.Transparent)
                         .border(
                             width = 1.5.dp,
                             // ✨ 边框颜色复用：选中为品牌色，未选中为全局第三级弱灰色
-                            color = if (isSelected) AppTheme.colors.brandAccent else AppTheme.colors.textTertiary,
+                            color = if (isSelected) AppDesignSystem.colors.brandAccent else AppDesignSystem.colors.textTertiary,
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -146,7 +146,7 @@ fun RefinedTransactionItem(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = "Selected",
                             // ✨ 对勾图标复用强调色上的白字配置
-                            tint = AppTheme.colors.textOnAccent,
+                            tint = AppDesignSystem.colors.textOnAccent,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -160,7 +160,12 @@ fun RefinedTransactionItem(
                     .background(data.color.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(data.icon, fontSize = 22.sp)
+                // ✨ 核心替换
+                CategoryIcon(
+                    iconName = data.icon,
+                    modifier = Modifier.size(24.dp),
+                    tint = data.color
+                )
             }
 
             Spacer(Modifier.width(16.dp))
@@ -171,7 +176,7 @@ fun RefinedTransactionItem(
                     text = data.title,
                     fontWeight = FontWeight.Bold,
                     // ✨ 映射全局主标题色
-                    color = AppTheme.colors.textPrimary,
+                    color = AppDesignSystem.colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -181,14 +186,14 @@ fun RefinedTransactionItem(
                 } ?: "12:00"
 
                 // ✨ 映射全局副标题色
-                Text(timeString, fontSize = 12.sp, color = AppTheme.colors.textSecondary)
+                Text(timeString, fontSize = 12.sp, color = AppDesignSystem.colors.textSecondary)
             }
 
             Spacer(Modifier.width(8.dp))
 
             // 金额区域
             // ✨ 完美映射全局的收入绿和支出红
-            val amountColor = if (data.amount.contains("+")) AppTheme.colors.incomeColor else AppTheme.colors.expenseColor
+            val amountColor = if (data.amount.contains("+")) AppDesignSystem.colors.incomeColor else AppDesignSystem.colors.expenseColor
             Text(
                 text = data.amount,
                 fontWeight = FontWeight.Black,

@@ -16,13 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.viewmodel.MonthlyRecord
 import kotlin.math.abs
 
@@ -78,14 +77,14 @@ fun YearlyMonthCell(
     onClick: () -> Unit // ✨ 核心修改 2：新增点击事件参数
 ) {
     // 1. 取出专属的热力配置色
-    val surplusBase = AppTheme.colors.heatmapSurplusBase
-    val surplusActive = AppTheme.colors.heatmapSurplusActive
-    val deficitBase = AppTheme.colors.heatmapDeficitBase
-    val deficitActive = AppTheme.colors.heatmapDeficitActive
-    val textPrimary = AppTheme.colors.heatmapTextPrimary
-    val textSecondary = AppTheme.colors.heatmapTextSecondary
-    val textOnActive = AppTheme.colors.heatmapTextOnActive
-    val emptyBg = AppTheme.colors.surfaceVariant
+    val surplusBase = AppDesignSystem.colors.heatmapSurplusBase
+    val surplusActive = AppDesignSystem.colors.heatmapSurplusActive
+    val deficitBase = AppDesignSystem.colors.heatmapDeficitBase
+    val deficitActive = AppDesignSystem.colors.heatmapDeficitActive
+    val textPrimary = AppDesignSystem.colors.heatmapTextPrimary
+    val textSecondary = AppDesignSystem.colors.heatmapTextSecondary
+    val textOnActive = AppDesignSystem.colors.heatmapTextOnActive
+    val emptyBg = AppDesignSystem.colors.surfaceVariant
 
     // 2. 极简的颜色插值逻辑：在 Base 和 Active 之间直接算色
     val bgColor = if (!hasData) {
@@ -131,7 +130,7 @@ fun YearlyMonthCell(
                 overflow = TextOverflow.Ellipsis
             )
         } else {
-            Text("-", fontSize = 10.sp, color = AppTheme.colors.textTertiary)
+            Text("-", fontSize = 10.sp, color = AppDesignSystem.colors.textTertiary)
         }
     }
 }

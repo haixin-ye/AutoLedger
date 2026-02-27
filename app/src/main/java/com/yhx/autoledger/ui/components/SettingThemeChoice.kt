@@ -25,7 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 
 @Composable
 fun ThemeSelectionRow(
@@ -37,28 +37,28 @@ fun ThemeSelectionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(AppTheme.dimens.listItemHeight)
-            .padding(horizontal = AppTheme.dimens.spacingNormal),
+            .height(AppDesignSystem.dimens.listItemHeight)
+            .padding(horizontal = AppDesignSystem.dimens.spacingNormal),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 左侧图标与标题
         Box(
             modifier = Modifier
-                .size(AppTheme.dimens.iconBgSize)
-                .background(AppTheme.colors.iconBgTheme.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                .size(AppDesignSystem.dimens.iconBgSize)
+                .background(AppDesignSystem.colors.iconBgTheme.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Rounded.Palette,
                 contentDescription = null,
-                tint = AppTheme.colors.iconBgTheme,
-                modifier = Modifier.size(AppTheme.dimens.iconSizeNormal)
+                tint = AppDesignSystem.colors.iconBgTheme,
+                modifier = Modifier.size(AppDesignSystem.dimens.iconSizeNormal)
             )
         }
-        Spacer(modifier = Modifier.width(AppTheme.dimens.spacingNormal))
+        Spacer(modifier = Modifier.width(AppDesignSystem.dimens.spacingNormal))
         Text(
             "主题外观",
-            color = AppTheme.colors.textPrimary,
+            color = AppDesignSystem.colors.textPrimary,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f)
@@ -67,17 +67,17 @@ fun ThemeSelectionRow(
         // ✨ 核心改造：右侧分段选择器
         Row(
             modifier = Modifier
-                .background(AppTheme.colors.appBackground, RoundedCornerShape(12.dp))
+                .background(AppDesignSystem.colors.appBackground, RoundedCornerShape(12.dp))
                 .padding(4.dp)
         ) {
             options.forEachIndexed { index, text ->
                 val isSelected = currentTheme == index
                 val bgColor by animateColorAsState(
-                    targetValue = if (isSelected) AppTheme.colors.brandAccent else Color.Transparent,
+                    targetValue = if (isSelected) AppDesignSystem.colors.brandAccent else Color.Transparent,
                     label = "bg"
                 )
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) Color.White else AppTheme.colors.textSecondary,
+                    targetValue = if (isSelected) Color.White else AppDesignSystem.colors.textSecondary,
                     label = "text"
                 )
 

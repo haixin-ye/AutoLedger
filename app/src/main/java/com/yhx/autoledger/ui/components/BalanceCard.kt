@@ -28,7 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -56,13 +56,13 @@ fun MainBalanceCard(
             .height(230.dp)
             .bounceClick(),
         shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppDesignSystem.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp) // ✨ 稍微增加了阴影深度
     ) {
         val dynamicGradient = Brush.linearGradient(
             colors = listOf(
-                AppTheme.colors.balanceCardGradientStart,
-                AppTheme.colors.balanceCardGradientEnd
+                AppDesignSystem.colors.balanceCardGradientStart,
+                AppDesignSystem.colors.balanceCardGradientEnd
             )
         )
 
@@ -77,7 +77,7 @@ fun MainBalanceCard(
                 modifier = Modifier
                     .size(200.dp)
                     .offset(x = (-50).dp, y = (-50).dp), // 移到左上角，换一种视觉平衡
-                color = AppTheme.colors.balanceCardCircleDecoration,
+                color = AppDesignSystem.colors.balanceCardCircleDecoration,
                 shape = CircleShape
             ) {}
 
@@ -93,18 +93,18 @@ fun MainBalanceCard(
                 ) {
                     Text(
                         "本月支出",
-                        color = AppTheme.colors.balanceCardTextSecondary,
+                        color = AppDesignSystem.colors.balanceCardTextSecondary,
                         fontSize = 14.sp
                     )
 
                     // ✨ 剩余预算以 Tag 的形式展示在右上角
                     Surface(
-                        color = if (isOverBudget) AppTheme.colors.warningRed.copy(alpha = 0.15f) else AppTheme.colors.balanceCardDailyAvgBg,
+                        color = if (isOverBudget) AppDesignSystem.colors.warningRed.copy(alpha = 0.15f) else AppDesignSystem.colors.balanceCardDailyAvgBg,
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             text = if (isOverBudget) "超支 ¥${formatter.format(-remainVal)}" else "剩余 ¥$remainStr",
-                            color = if (isOverBudget) AppTheme.colors.warningRed else AppTheme.colors.balanceCardTextPrimary,
+                            color = if (isOverBudget) AppDesignSystem.colors.warningRed else AppDesignSystem.colors.balanceCardTextPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -115,7 +115,7 @@ fun MainBalanceCard(
                 // 核心数字
                 Text(
                     "¥ $expense",
-                    color = AppTheme.colors.balanceCardTextPrimary,
+                    color = AppDesignSystem.colors.balanceCardTextPrimary,
                     fontSize = 42.sp, // 字体略微放大
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
@@ -128,8 +128,8 @@ fun MainBalanceCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = if (isOverBudget) AppTheme.colors.warningRed else AppTheme.colors.balanceCardTextPrimary,
-                    trackColor = AppTheme.colors.balanceCardCircleDecoration
+                    color = if (isOverBudget) AppDesignSystem.colors.warningRed else AppDesignSystem.colors.balanceCardTextPrimary,
+                    trackColor = AppDesignSystem.colors.balanceCardCircleDecoration
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -154,12 +154,12 @@ fun CardDetailItem(label: String, value: String) {
     Column {
         Text(
             label,
-            color = AppTheme.colors.balanceCardTextSecondary,
+            color = AppDesignSystem.colors.balanceCardTextSecondary,
             fontSize = 11.sp // 字体略微缩小以容纳4个元素
         )
         Text(
             value, // 取消前置的“¥”符号使排列更紧凑
-            color = AppTheme.colors.balanceCardTextPrimary,
+            color = AppDesignSystem.colors.balanceCardTextPrimary,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold
         )

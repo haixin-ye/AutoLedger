@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
 
 @Composable
 fun DoubleCircleGauges(
@@ -43,9 +43,9 @@ fun DoubleCircleGauges(
     val safeDayProgress = dayProgress.coerceIn(0f, 1f)
 
     // ✨ 使用专属的仪表盘健康度颜色
-    val safeColor = AppTheme.colors.gaugeSafe
-    val warningColor = AppTheme.colors.gaugeWarning
-    val dangerColor = AppTheme.colors.gaugeDanger
+    val safeColor = AppDesignSystem.colors.gaugeSafe
+    val warningColor = AppDesignSystem.colors.gaugeWarning
+    val dangerColor = AppDesignSystem.colors.gaugeDanger
 
     // 月份颜色逻辑
     val monthColor = when {
@@ -90,7 +90,7 @@ fun DoubleCircleGauges(
                     color = monthColor,
                     strokeWidth = 8.dp,
                     // ✨ 映射专属底轨色
-                    trackColor = AppTheme.colors.gaugeTrack,
+                    trackColor = AppDesignSystem.colors.gaugeTrack,
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -101,20 +101,20 @@ fun DoubleCircleGauges(
                     )
                     if (!isPreviewMode) {
                         // ✨ 映射全局次要文本
-                        Text("月预算已用", fontSize = 10.sp, color = AppTheme.colors.textSecondary)
+                        Text("月预算已用", fontSize = 10.sp, color = AppDesignSystem.colors.textSecondary)
                     }
                 }
             }
             Spacer(Modifier.height(8.dp))
             if (isPreviewMode) {
                 // ✨ 映射全局次要文本
-                Text("月预算已用", color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+                Text("月预算已用", color = AppDesignSystem.colors.textSecondary, fontSize = 12.sp)
             } else {
                 Text(
                     "${monthExpense.toInt()} / ${monthBudget.toInt()}",
                     fontSize = 12.sp,
                     // ✨ 映射全局次要文本
-                    color = AppTheme.colors.textSecondary,
+                    color = AppDesignSystem.colors.textSecondary,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -129,7 +129,7 @@ fun DoubleCircleGauges(
                     color = dayColor,
                     strokeWidth = 8.dp,
                     // ✨ 映射专属底轨色
-                    trackColor = AppTheme.colors.gaugeTrack,
+                    trackColor = AppDesignSystem.colors.gaugeTrack,
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     val textToShow = customDayCenterText ?: "${(safeDayProgress * 100).toInt()}%"
@@ -141,20 +141,20 @@ fun DoubleCircleGauges(
                     )
                     if (!isPreviewMode) {
                         // ✨ 映射全局次要文本
-                        Text("日限额已用", fontSize = 10.sp, color = AppTheme.colors.textSecondary)
+                        Text("日限额已用", fontSize = 10.sp, color = AppDesignSystem.colors.textSecondary)
                     }
                 }
             }
             Spacer(Modifier.height(8.dp))
             if (isPreviewMode) {
                 // ✨ 映射全局次要文本
-                Text("日均可用", color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+                Text("日均可用", color = AppDesignSystem.colors.textSecondary, fontSize = 12.sp)
             } else {
                 Text(
                     "${dayExpense.toInt()} / ${dayBudget.toInt()}",
                     fontSize = 12.sp,
                     // ✨ 映射全局次要文本
-                    color = AppTheme.colors.textSecondary,
+                    color = AppDesignSystem.colors.textSecondary,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -176,7 +176,7 @@ fun AnimatedCircleItem(label: String, targetProgress: Float, color: Color) {
                 progress = { 1f },
                 modifier = Modifier.fillMaxSize(),
                 // ✨ 映射专属底轨色
-                color = AppTheme.colors.gaugeTrack,
+                color = AppDesignSystem.colors.gaugeTrack,
                 strokeWidth = 10.dp,
                 strokeCap = StrokeCap.Round,
             )
@@ -193,11 +193,11 @@ fun AnimatedCircleItem(label: String, targetProgress: Float, color: Color) {
                 "${(progress.value * 100).toInt()}%",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
-                color = AppTheme.colors.textPrimary
+                color = AppDesignSystem.colors.textPrimary
             )
         }
         Spacer(Modifier.height(8.dp))
         // ✨ 映射全局次要文本
-        Text(label, fontSize = 12.sp, color = AppTheme.colors.textSecondary)
+        Text(label, fontSize = 12.sp, color = AppDesignSystem.colors.textSecondary)
     }
 }

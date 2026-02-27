@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Celebration
 import androidx.compose.material.icons.rounded.KeyboardArrowLeft
 import androidx.compose.material3.*
@@ -42,7 +41,7 @@ import com.yhx.autoledger.data.entity.LedgerEntity
 import com.yhx.autoledger.models.CategoryPercentage
 import com.yhx.autoledger.models.MonthlyStats
 import com.yhx.autoledger.ui.components.*
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.ui.theme.CategoryFood
 import com.yhx.autoledger.ui.theme.CategoryOther
 import com.yhx.autoledger.ui.theme.CategoryShop
@@ -143,7 +142,7 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(AppTheme.colors.appBackground)
+                            .background(AppDesignSystem.colors.appBackground)
                     ) {
                         ViewToggleSegment(
                             isYearView = isYearView,
@@ -237,7 +236,7 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
         ) {
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = AppTheme.colors.cardBackground,
+                color = AppDesignSystem.colors.cardBackground,
                 shadowElevation = 8.dp
             ) {
                 Row(
@@ -247,13 +246,13 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                     Icon(
                         imageVector = Icons.Rounded.Celebration,
                         contentDescription = null,
-                        tint = AppTheme.colors.brandAccent,
+                        tint = AppDesignSystem.colors.brandAccent,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = topToastMessage,
-                        color = AppTheme.colors.textPrimary,
+                        color = AppDesignSystem.colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -342,7 +341,7 @@ fun DailyDetailView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppTheme.colors.appBackground)
+            .background(AppDesignSystem.colors.appBackground)
     ) {
         Row(
             modifier = Modifier
@@ -354,7 +353,7 @@ fun DailyDetailView(
                 Icon(
                     imageVector = Icons.Rounded.KeyboardArrowLeft,
                     contentDescription = "返回",
-                    tint = AppTheme.colors.textPrimary,
+                    tint = AppDesignSystem.colors.textPrimary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -362,14 +361,14 @@ fun DailyDetailView(
                 text = "${month.monthValue}月${day}日 账单明细",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.textPrimary,
+                color = AppDesignSystem.colors.textPrimary,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
 
         if (dayLedgers.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("这一天没有记账哦 🍃", color = AppTheme.colors.textSecondary)
+                Text("这一天没有记账哦 🍃", color = AppDesignSystem.colors.textSecondary)
             }
         } else {
             LazyColumn(
@@ -430,7 +429,7 @@ fun ViewToggleSegment(isYearView: Boolean, onToggle: (Boolean) -> Unit) {
             .padding(horizontal = 32.dp, vertical = 8.dp)
             .height(40.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(AppTheme.colors.surfaceVariant), // 使用全局浅灰槽
+            .background(AppDesignSystem.colors.surfaceVariant), // 使用全局浅灰槽
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -439,7 +438,7 @@ fun ViewToggleSegment(isYearView: Boolean, onToggle: (Boolean) -> Unit) {
                 .fillMaxHeight()
                 .padding(4.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(if (!isYearView) AppTheme.colors.cardBackground else Color.Transparent)
+                .background(if (!isYearView) AppDesignSystem.colors.cardBackground else Color.Transparent)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -448,7 +447,7 @@ fun ViewToggleSegment(isYearView: Boolean, onToggle: (Boolean) -> Unit) {
         ) {
             Text(
                 text = "月度",
-                color = if (!isYearView) AppTheme.colors.textPrimary else AppTheme.colors.textSecondary,
+                color = if (!isYearView) AppDesignSystem.colors.textPrimary else AppDesignSystem.colors.textSecondary,
                 fontWeight = if (!isYearView) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 14.sp
             )
@@ -459,7 +458,7 @@ fun ViewToggleSegment(isYearView: Boolean, onToggle: (Boolean) -> Unit) {
                 .fillMaxHeight()
                 .padding(4.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(if (isYearView) AppTheme.colors.cardBackground else Color.Transparent)
+                .background(if (isYearView) AppDesignSystem.colors.cardBackground else Color.Transparent)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -468,7 +467,7 @@ fun ViewToggleSegment(isYearView: Boolean, onToggle: (Boolean) -> Unit) {
         ) {
             Text(
                 text = "年度",
-                color = if (isYearView) AppTheme.colors.textPrimary else AppTheme.colors.textSecondary,
+                color = if (isYearView) AppDesignSystem.colors.textPrimary else AppDesignSystem.colors.textSecondary,
                 fontWeight = if (isYearView) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 14.sp
             )
@@ -556,7 +555,7 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { onClick() },
-        color = AppTheme.colors.cardBackground,
+        color = AppDesignSystem.colors.cardBackground,
         shape = RoundedCornerShape(20.dp),
         shadowElevation = 1.dp
     ) {
@@ -567,13 +566,13 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                 Text(
                     category.name,
                     fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.textPrimary,
+                    color = AppDesignSystem.colors.textPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     "¥${category.amount}",
                     fontWeight = FontWeight.Black,
-                    color = AppTheme.colors.textPrimary
+                    color = AppDesignSystem.colors.textPrimary
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -583,7 +582,7 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                         .weight(1f)
                         .height(6.dp)
                         .clip(CircleShape)
-                        .background(AppTheme.colors.surfaceVariant)
+                        .background(AppDesignSystem.colors.surfaceVariant)
                 ) {
                     Box(
                         modifier = Modifier
@@ -596,7 +595,7 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                 Text(
                     "${(category.percentage * 100).toInt()}%",
                     fontSize = 12.sp,
-                    color = AppTheme.colors.textSecondary
+                    color = AppDesignSystem.colors.textSecondary
                 )
             }
         }
@@ -606,12 +605,12 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
 @Composable
 fun StatItem(label: String, value: String, modifier: Modifier) {
     Column(modifier) {
-        Text(label, fontSize = 12.sp, color = AppTheme.colors.textSecondary)
+        Text(label, fontSize = 12.sp, color = AppDesignSystem.colors.textSecondary)
         Text(
             "¥$value",
             fontSize = 18.sp,
             fontWeight = FontWeight.Black,
-            color = AppTheme.colors.textPrimary
+            color = AppDesignSystem.colors.textPrimary
         )
     }
 }
@@ -623,7 +622,7 @@ fun EmptyDataView() {
             .fillMaxWidth()
             .height(200.dp), contentAlignment = Alignment.Center
     ) {
-        Text("暂无记录 🍃", color = AppTheme.colors.textSecondary, fontSize = 16.sp)
+        Text("暂无记录 🍃", color = AppDesignSystem.colors.textSecondary, fontSize = 16.sp)
     }
 }
 
@@ -636,7 +635,7 @@ fun SectionTitle(title: String) {
         text = title,
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
-        color = AppTheme.colors.textPrimary,
+        color = AppDesignSystem.colors.textPrimary,
         modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
     )
 }
@@ -647,8 +646,8 @@ fun SectionTitle(title: String) {
 @Composable
 fun YearSelectorTopBar(year: Int, onYearChange: (Int) -> Unit) {
     // 提取颜色变量
-    val textPrimary = AppTheme.colors.textPrimary
-    val brandAccent = AppTheme.colors.brandAccent
+    val textPrimary = AppDesignSystem.colors.textPrimary
+    val brandAccent = AppDesignSystem.colors.brandAccent
 
     Row(
         modifier = Modifier
