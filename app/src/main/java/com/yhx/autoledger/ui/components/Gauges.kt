@@ -108,7 +108,7 @@ fun DoubleCircleGauges(
             Spacer(Modifier.height(8.dp))
             if (isPreviewMode) {
                 // ✨ 映射全局次要文本
-                Text("月预算", color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+                Text("月预算已用", color = AppTheme.colors.textSecondary, fontSize = 12.sp)
             } else {
                 Text(
                     "${monthExpense.toInt()} / ${monthBudget.toInt()}",

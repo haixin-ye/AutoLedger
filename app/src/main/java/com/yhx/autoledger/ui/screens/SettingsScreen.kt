@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.yhx.autoledger.ui.components.ThemeSelectionRow
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.theme.AppTheme
 // 删除了对 LightBlueGradient 的强行引用，改为动态生成
@@ -102,16 +103,10 @@ fun SettingsScreen(
 
         item {
             SettingsGroup(title = "通用设置") {
-                SettingClickRow(
-                    icon = Icons.Rounded.Palette,
-                    iconTint = AppTheme.colors.iconBgTheme,
-                    title = "主题外观",
-                    value = when(currentTheme) {
-                        1 -> "浅色模式"
-                        2 -> "深色模式"
-                        else -> "跟随系统"
-                    },
-                    onClick = { showThemeDialog = true }
+                // ✨ 这里替换为我们新写的内嵌式组件
+                ThemeSelectionRow(
+                    currentTheme = currentTheme,
+                    onThemeChange = onThemeChange
                 )
                 Divider(Modifier.padding(start = 56.dp), color = AppTheme.colors.dividerColor)
                 SettingClickRow(
@@ -338,3 +333,4 @@ fun ThemeOptionRow(text: String, value: Int, currentValue: Int, onSelect: (Int) 
         Text(text, color = AppTheme.colors.textPrimary)
     }
 }
+

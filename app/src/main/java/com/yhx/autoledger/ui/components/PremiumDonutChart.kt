@@ -14,17 +14,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.models.CategoryPercentage
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppTheme
+import kotlin.math.max
+import kotlin.math.min
 
-// ✨ 将获取颜色的逻辑改为从 AppTheme 动态读取
 @Composable
 fun getPremiumBrush(index: Int): Brush {
     val palette = AppTheme.colors.donutChartPalette
@@ -40,23 +43,27 @@ fun getPremiumBaseColor(index: Int): Color {
 
 @Composable
 fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
+    // ✨ 1. 核心逻辑：动态计算缩放比例
+    // 假设理想状态下展示 5 个条目是 100% 大小。
+    // 如果数据超过 5 个，就开始动态计算缩小比例。设置一个极限最小值防瞎眼（例如最小缩放到 0.55 倍）
+    val scale = remember(data.size) {
+        if (data.size <= 5) 1f else max(0.55f, 5f / data.size)
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(260.dp) // 保持高度固定，防跳动
+            .height(260.dp) // 高度依然死死锁定，保证布局不跳
             .padding(horizontal = 8.dp, vertical = 24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        // ================= 左侧：霸气圆环 =================
+        // ================= 左侧：霸气圆环 (保持不变) =================
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.weight(1.3f)
         ) {
-            // ✨ 提前读取轨道颜色，避免在 Canvas 作用域报错
             val trackColor = AppTheme.colors.donutChartTrack
-
-            // 提前准备好所有的 Brush，以便在 Canvas 中使用
             val brushes = data.mapIndexed { index, _ -> getPremiumBrush(index) }
             val singleBrush = if (data.size == 1) getPremiumBrush(0) else null
 
@@ -69,7 +76,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                 val totalOffsetAngle = capAngle + visualGapAngle
 
                 drawCircle(
-                    color = trackColor, // ✨ 映射底轨色
+                    color = trackColor,
                     radius = radius,
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidthPx)
                 )
@@ -122,7 +129,7 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                 Text(
                     text = "总支出",
                     fontSize = 12.sp,
-                    color = AppTheme.colors.donutChartTextSecondary, // ✨ 映射次要文字色
+                    color = AppTheme.colors.donutChartTextSecondary,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(Modifier.height(4.dp))
@@ -131,62 +138,80 @@ fun PremiumDonutChart(data: List<CategoryPercentage>, totalExpense: String) {
                         text = "¥",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.donutChartTextPrimary, // ✨ 映射主要文字色
+                        color = AppTheme.colors.donutChartTextPrimary,
                         modifier = Modifier.padding(bottom = 2.dp, end = 2.dp)
                     )
                     Text(
                         text = totalExpense,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = AppTheme.colors.donutChartTextPrimary, // ✨ 映射主要文字色
+                        color = AppTheme.colors.donutChartTextPrimary,
                         letterSpacing = (-0.5).sp
                     )
                 }
             }
         }
 
-        // ================= 右侧：填满空间的对齐图例 =================
+        // ================= 右侧：极致自适应的图例列表 =================
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(start = 36.dp, end = 16.dp),
-            // ✨ 修复：改为 SpaceEvenly，让图例在垂直方向上均匀分布，彻底告别高度写死导致的溢出遮挡！
+                .padding(start = 24.dp, end = 8.dp),
+            // ✨ 2. 改回 SpaceEvenly，让它在固定高度内自动均分剩余空间
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            data.take(5).forEachIndexed { index, item ->
+            // ✨ 3. 为了防极端情况（比如有 20 个分类），我们设一个硬上限（比如最多画 10 个）
+            // 剩下的只能截断，因为屏幕物理分辨率真的装不下那么小了。
+            val maxDisplayCount = 10
+            val displayData = data.take(maxDisplayCount)
+
+            displayData.forEachIndexed { index, item ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // 1. 圆点
+                    // 圆点随比例缩放 (基础大小 10dp)
                     Box(
                         modifier = Modifier
-                            .size(10.dp)
+                            .size((10 * scale).dp)
                             .background(getPremiumBrush(index), shape = androidx.compose.foundation.shape.CircleShape)
                     )
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    // 间距随比例缩放 (基础间距 8dp)
+                    Spacer(modifier = Modifier.width((8 * scale).dp))
 
-                    // 2. 分类名字（利用 weight 顶开右侧的百分比）
+                    // 分类名字随比例缩放 (基础字号 13sp)
                     Text(
                         text = item.name,
-                        fontSize = 14.sp,
+                        fontSize = (13 * scale).sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary, // ✨ 图例名字映射全局主文字色
+                        color = AppTheme.colors.textPrimary,
                         maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
 
-                    // 3. 百分比（自然靠右对齐）
+                    Spacer(modifier = Modifier.width((4 * scale).dp))
+
+                    // 百分比随比例缩放 (基础字号 13sp)
                     Text(
                         text = "${(item.percentage * 100).toInt()}%",
-                        fontSize = 14.sp,
-                        color = AppTheme.colors.textSecondary, // ✨ 图例百分比映射全局副文字色
+                        fontSize = (13 * scale).sp,
+                        color = AppTheme.colors.textSecondary,
                         fontWeight = FontWeight.Medium
                     )
                 }
+            }
+
+            // 可选：如果被截断了，可以在最下面显示一个细微的提示
+            if (data.size > maxDisplayCount) {
+                Text(
+                    text = "等共 ${data.size} 项",
+                    fontSize = (10 * scale).sp,
+                    color = AppTheme.colors.textTertiary,
+                    modifier = Modifier.align(Alignment.End).padding(top = 2.dp)
+                )
             }
         }
     }

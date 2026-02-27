@@ -21,12 +21,8 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
-
-// 💡 新增：用于日历格子显示每日收支
-data class DailyRecord(
-    val expense: Double = 0.0,
-    val income: Double = 0.0
-)
+data class DailyRecord(val expense: Double = 0.0, val income: Double = 0.0)
+data class MonthlyRecord(val expense: Double = 0.0, val income: Double = 0.0)
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
@@ -34,48 +30,29 @@ class DetailViewModel @Inject constructor(
     private val userPrefs: UserPreferencesRepository
 ) : ViewModel() {
 
-
-    // ✨ 核心状态：月份偏移量（与 HomeViewModel 保持一致）
+    // =========================================================================
+    //  🔴 月视图状态管理
+    // =========================================================================
     val monthOffset = MutableStateFlow(0)
+    private val selectedYear = MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))
 
-    // ✨ 核心：根据月份 Key 动态获取真实预算
     val monthlyBudget: StateFlow<Double> = monthOffset.flatMapLatest { offset ->
-        val key = DateUtils.getYearMonthKey(offset) // ✨ 修复：使用 DateUtils 统一的 Key 生成规则
+        val key = DateUtils.getYearMonthKey(offset)
         userPrefs.getMonthlyBudget(key)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5000.0)
 
-    // ================== 1. 基础数据流 ==================
-
-    // 当月总支出
     private val totalExpenseFlow = monthOffset.flatMapLatest { offset ->
-        repository.getTotalAmountBetween(
-            DateUtils.getMonthStart(offset),
-            DateUtils.getMonthEnd(offset),
-            0
-        )
-            .map { it ?: 0.0 }
+        repository.getTotalAmountBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 0).map { it ?: 0.0 }
     }
 
-    // 当月总收入
     private val totalIncomeFlow = monthOffset.flatMapLatest { offset ->
-        repository.getTotalAmountBetween(
-            DateUtils.getMonthStart(offset),
-            DateUtils.getMonthEnd(offset),
-            1
-        )
-            .map { it ?: 0.0 }
+        repository.getTotalAmountBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 1).map { it ?: 0.0 }
     }
 
-    // ================== 2. UI 绑定的衍生状态 ==================
-
-    // 📊 数据总览 (整合支出、收入、结余、日均)
     val monthlyStats: StateFlow<MonthlyStats> = combine(
-        totalExpenseFlow,
-        totalIncomeFlow,
-        monthOffset
+        totalExpenseFlow, totalIncomeFlow, monthOffset
     ) { expense, income, offset ->
         val balance = income - expense
-        // 获取天数信息：如果是本月则除以“今天到了第几天”，如果是历史月份除以“该月总天数”
         val (passedDays, _) = DateUtils.getDaysInfo(offset)
         val dailyAvg = if (passedDays > 0) expense / passedDays else 0.0
 
@@ -85,20 +62,13 @@ class DetailViewModel @Inject constructor(
             balance = String.format("%.2f", balance),
             dailyAvg = String.format("%.2f", dailyAvg)
         )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        MonthlyStats("0.00", "0.00", "0.00", "0.00")
-    )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyStats("0.00", "0.00", "0.00", "0.00"))
 
-    // 📅 日历网格每日汇总：Map<日期, 当天总支出>
-    // ✨ 同时统计每天的收入和支出
     val dailyRecordsMap: StateFlow<Map<Int, DailyRecord>> = monthOffset.flatMapLatest { offset ->
         repository.getLedgersBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset))
             .map { ledgers ->
                 ledgers.groupBy { ledger ->
-                    val calendar = Calendar.getInstance().apply { timeInMillis = ledger.timestamp }
-                    calendar.get(Calendar.DAY_OF_MONTH)
+                    Calendar.getInstance().apply { timeInMillis = ledger.timestamp }.get(Calendar.DAY_OF_MONTH)
                 }.mapValues { entry ->
                     val dayExpense = entry.value.filter { it.type == 0 }.sumOf { it.amount }
                     val dayIncome = entry.value.filter { it.type == 1 }.sumOf { it.amount }
@@ -107,66 +77,115 @@ class DetailViewModel @Inject constructor(
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    // 🥧 分类饼图与列表数据
-    val categoryPercentages: StateFlow<List<CategoryPercentage>> =
-        monthOffset.flatMapLatest { offset ->
-            repository.getCategorySumBetween(
-                DateUtils.getMonthStart(offset),
-                DateUtils.getMonthEnd(offset),
-                type = 0
-            )
-                .map { categorySums ->
-                    val totalAmount = categorySums.sumOf { it.totalAmount }
-                    if (totalAmount == 0.0) return@map emptyList()
-
-                    categorySums.mapIndexed { index, sum ->
-                        CategoryPercentage(
-                            name = sum.categoryName,
-                            amount = String.format("%.2f", sum.totalAmount),
-                            percentage = (sum.totalAmount / totalAmount).toFloat(),
-                            icon = sum.categoryIcon ?: "🏷️",
-                            color = getPremiumChartColor(index)
-                        )
-                    }
+    val yearlyMonthlyRecordsMap: StateFlow<Map<Int, MonthlyRecord>> = selectedYear.flatMapLatest { year ->
+        repository.getLedgersBetween(getYearStart(year), getYearEnd(year))
+            .map { ledgers ->
+                ledgers.groupBy { ledger ->
+                    Calendar.getInstance().apply { timeInMillis = ledger.timestamp }.get(Calendar.MONTH) + 1
+                }.mapValues { entry ->
+                    val mExpense = entry.value.filter { it.type == 0 }.sumOf { it.amount }
+                    val mIncome = entry.value.filter { it.type == 1 }.sumOf { it.amount }
+                    MonthlyRecord(expense = mExpense, income = mIncome)
                 }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    // 📜 供下钻到二级页面的分类流水列表
+    val categoryPercentages: StateFlow<List<CategoryPercentage>> = monthOffset.flatMapLatest { offset ->
+        repository.getCategorySumBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 0)
+            .map { categorySums ->
+                val totalAmount = categorySums.sumOf { it.totalAmount }
+                if (totalAmount == 0.0) return@map emptyList()
+
+                categorySums.map { sum ->
+                    CategoryPercentage(
+                        name = sum.categoryName,
+                        amount = String.format("%.2f", sum.totalAmount),
+                        percentage = (sum.totalAmount / totalAmount).toFloat(),
+                        icon = sum.categoryIcon ?: "🏷️",
+                        // ✨ 修复：不再处理颜色，赋透明值，UI 会通过 AppDesignSystem 自动上色
+                        color = Color.Transparent
+                    )
+                }
+            }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val currentMonthLedgers: StateFlow<List<LedgerEntity>> = monthOffset.flatMapLatest { offset ->
         repository.getLedgersBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 
-    // ================== 辅助方法 ==================
+    // =========================================================================
+    //  ☀️ 年视图状态管理
+    // =========================================================================
 
-    // ✨ 高级感色彩美学：莫兰迪 + 现代扁平色系
-    private fun getPremiumChartColor(index: Int): Color {
-        val colors = listOf(
-            Color(0xFF5C6BC0), // Indigo
-            Color(0xFF26A69A), // Teal
-            Color(0xFFFF7043), // Deep Orange
-            Color(0xFF42A5F5), // Blue
-            Color(0xFFAB47BC), // Purple
-            Color(0xFFFFCA28), // Amber
-            Color(0xFFEC407A), // Pink
-            Color(0xFF9CCC65), // Light Green
-            Color(0xFF26C6DA), // Cyan
-            Color(0xFF8D6E63)  // Brown
+    fun setYear(targetYear: Int) {
+        selectedYear.value = targetYear
+    }
+
+    // ✨ 核心修复：真实年度预算 = 动态查询该年份 12 个月的独立预算之和
+    val yearlyBudget: StateFlow<Double> = selectedYear.flatMapLatest { year ->
+        val budgetFlows = (1..12).map { month ->
+            userPrefs.getMonthlyBudget("${year}_${String.format("%02d", month)}")
+        }
+        combine(budgetFlows) { budgets -> budgets.sum() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    private val yearlyExpenseFlow = selectedYear.flatMapLatest { year ->
+        repository.getTotalAmountBetween(getYearStart(year), getYearEnd(year), 0).map { it ?: 0.0 }
+    }
+
+    private val yearlyIncomeFlow = selectedYear.flatMapLatest { year ->
+        repository.getTotalAmountBetween(getYearStart(year), getYearEnd(year), 1).map { it ?: 0.0 }
+    }
+
+    val yearlyStats: StateFlow<MonthlyStats> = combine(
+        yearlyExpenseFlow, yearlyIncomeFlow, selectedYear
+    ) { expense, income, year ->
+        val balance = income - expense
+        val calendar = Calendar.getInstance()
+        val currentYear = calendar.get(Calendar.YEAR)
+        val passedDays = if (year == currentYear) calendar.get(Calendar.DAY_OF_YEAR)
+        else if (year < currentYear) Calendar.getInstance().apply { set(Calendar.YEAR, year) }.getActualMaximum(Calendar.DAY_OF_YEAR)
+        else 0
+
+        val dailyAvg = if (passedDays > 0) expense / passedDays else 0.0
+
+        MonthlyStats(
+            totalExpense = String.format("%.2f", expense),
+            totalIncome = String.format("%.2f", income),
+            balance = String.format("%.2f", balance),
+            dailyAvg = String.format("%.2f", dailyAvg)
         )
-        return colors[index % colors.size]
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyStats("0.00", "0.00", "0.00", "0.00"))
+
+    val yearlyCategoryPercentages: StateFlow<List<CategoryPercentage>> = selectedYear.flatMapLatest { year ->
+        repository.getCategorySumBetween(getYearStart(year), getYearEnd(year), 0).map { categorySums ->
+            val totalAmount = categorySums.sumOf { it.totalAmount }
+            if (totalAmount == 0.0) return@map emptyList()
+
+            categorySums.map { sum ->
+                CategoryPercentage(
+                    name = sum.categoryName, amount = String.format("%.2f", sum.totalAmount),
+                    percentage = (sum.totalAmount / totalAmount).toFloat(), icon = sum.categoryIcon ?: "🏷️",
+                    color = Color.Transparent // 交给 UI 处理
+                )
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val currentYearLedgers: StateFlow<List<LedgerEntity>> = selectedYear.flatMapLatest { year ->
+        repository.getLedgersBetween(getYearStart(year), getYearEnd(year))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // 🛠 辅助方法
+    private fun getYearStart(year: Int): Long {
+        return Calendar.getInstance().apply { clear(); set(Calendar.YEAR, year) }.timeInMillis
     }
 
-    // ✨ 更新账单
-    fun updateLedger(ledger: LedgerEntity) {
-        viewModelScope.launch {
-            repository.updateLedger(ledger)
-        }
+    private fun getYearEnd(year: Int): Long {
+        return Calendar.getInstance().apply { clear(); set(Calendar.YEAR, year); set(Calendar.MONTH, Calendar.DECEMBER); set(Calendar.DAY_OF_MONTH, 31); set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999) }.timeInMillis
     }
 
-    // ✨ 删除账单
-    fun deleteLedger(ledger: LedgerEntity) {
-        viewModelScope.launch {
-            repository.deleteLedger(ledger)
-        }
-    }
+    fun updateLedger(ledger: LedgerEntity) { viewModelScope.launch { repository.updateLedger(ledger) } }
+    fun deleteLedger(ledger: LedgerEntity) { viewModelScope.launch { repository.deleteLedger(ledger) } }
 }

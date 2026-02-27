@@ -24,18 +24,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.ui.theme.AppTheme
 import com.yhx.autoledger.viewmodel.DailyRecord
+import com.yhx.autoledger.viewmodel.MonthlyRecord
 import java.time.YearMonth
 import java.util.Calendar
-
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.text.style.TextOverflow
 // ✨ 日历显示支出和收入
+// ✨ 增加 onDayClick 回调
 @Composable
-fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
+fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>, onDayClick: (Int) -> Unit = {}) {
     val firstDayOfWeek = month.atDay(1).dayOfWeek.value % 7
     val daysInMonth = month.lengthOfMonth()
     val prevMonth = month.minusMonths(1)
@@ -62,13 +66,12 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
             // 1. 填充上个月的末尾日期
             items(firstDayOfWeek) { index ->
                 val day = daysInPrevMonth - (firstDayOfWeek - index - 1)
-                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false)
+                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false, onDayClick = onDayClick)
             }
 
             // 2. 填充本月日期
             val today = Calendar.getInstance()
-            val isThisMonth =
-                month.year == today.get(Calendar.YEAR) && month.monthValue == (today.get(Calendar.MONTH) + 1)
+            val isThisMonth = month.year == today.get(Calendar.YEAR) && month.monthValue == (today.get(Calendar.MONTH) + 1)
 
             items(daysInMonth) { index ->
                 val day = index + 1
@@ -77,7 +80,8 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
                     day = day,
                     record = dailyMap[day],
                     isToday = isToday,
-                    isCurrentMonth = true
+                    isCurrentMonth = true,
+                    onDayClick = onDayClick // ✨ 传入回调
                 )
             }
 
@@ -85,15 +89,21 @@ fun CalendarGrid(month: YearMonth, dailyMap: Map<Int, DailyRecord>) {
             val remainingCells = 42 - (firstDayOfWeek + daysInMonth)
             items(remainingCells) { index ->
                 val day = index + 1
-                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false)
+                CalendarDayCell(day = day, record = null, isToday = false, isCurrentMonth = false, onDayClick = onDayClick)
             }
         }
     }
 }
 
+// ✨ 增加 onDayClick 参数并实现点击
 @Composable
-fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentMonth: Boolean) {
-    // ✨ 修复：不再强行复用，直接使用专门为日历定义的颜色
+fun CalendarDayCell(
+    day: Int,
+    record: DailyRecord?,
+    isToday: Boolean,
+    isCurrentMonth: Boolean,
+    onDayClick: (Int) -> Unit // ✨ 新增参数
+) {
     val textColor = if (isCurrentMonth) {
         if (isToday) AppTheme.colors.calendarTodayText else AppTheme.colors.textPrimary
     } else {
@@ -106,10 +116,13 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentM
         modifier = Modifier
             .fillMaxWidth()
             .height(46.dp)
+            .clip(RoundedCornerShape(8.dp)) // ✨ 切圆角，防止点击水波纹溢出方格
             .background(
-                // ✨ 修复：使用专门的今日底色
                 if (isToday) AppTheme.colors.calendarTodayBackground else Color.Transparent,
-                RoundedCornerShape(8.dp)
+            )
+            .clickable(
+                enabled = isCurrentMonth, // ✨ 只有当前月份的日子允许被点击
+                onClick = { onDayClick(day) }
             )
     ) {
         Text(
@@ -121,10 +134,8 @@ fun CalendarDayCell(day: Int, record: DailyRecord?, isToday: Boolean, isCurrentM
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // 仅本月且有数据时显示金额
         if (isCurrentMonth && record != null && (record.expense > 0 || record.income > 0)) {
             val netAmount = record.income - record.expense
-            // ✨ 对于收支金额，直接使用全局的 income/expenseColor 是非常合理的语义复用
             Text(
                 text = "${if (netAmount >= 0) "+" else "-"}${Math.abs(netAmount).toInt()}",
                 fontSize = 10.sp,
@@ -192,3 +203,8 @@ fun DetailTopBar(month: YearMonth, onMonthClick: () -> Unit) {
         }
     }
 }
+
+
+
+
+

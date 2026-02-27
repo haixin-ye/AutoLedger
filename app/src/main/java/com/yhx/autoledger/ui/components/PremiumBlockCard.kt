@@ -55,125 +55,79 @@ fun PremiumBlockCard(
 // ⚠️ 注意：删除了之前写死的 val ChartPremiumGradient，彻底消除静态变量的副作用！
 
 @Composable
-fun DataOverviewSection(stats: MonthlyStats, budget: Double) {
+fun DataOverviewSection(stats: MonthlyStats, budget: Double, isYearView: Boolean = false) {
+    // ✨ 提前提取颜色变量，彻底解决 @Composable invocation 报错
+    val textPrimary = AppTheme.colors.textPrimary
+    val textSecondary = AppTheme.colors.textSecondary
+    val indicatorColor = AppTheme.colors.overviewIndicatorColor
+    val surfaceVariant = AppTheme.colors.surfaceVariant
+    val dividerColor = AppTheme.colors.dividerColor
+    val subPanelBg = AppTheme.colors.overviewSubPanelBg
+    val incomeColor = AppTheme.colors.incomeColor
+    val expenseColor = AppTheme.colors.expenseColor
+    val gradientEnd = AppTheme.colors.chartGradientEnd
+    val gradientStart = AppTheme.colors.chartGradientStart
+
     val expense = stats.totalExpense.toDoubleOrNull() ?: 0.0
     val income = stats.totalIncome.toDoubleOrNull() ?: 0.0
     val balance = income - expense
     val balanceStr = String.format("%.2f", balance)
 
+    // ✨ 修复：计算真实占比，并格式化为 1 位小数的百分比字符串（如 "5.6%"）
     val usageRate = if (budget > 0) (expense / budget).toFloat().coerceIn(0f, 1f) else 0f
-    val usagePercent = (usageRate * 100).toInt()
+    val usagePercentStr = String.format("%.1f%%", usageRate * 100)
+
+    // ✨ 动态前缀
+    val prefix = if (isYearView) "本年" else "本月"
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // --- 1. 头部标题 ---
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 20.dp)
-        ) {
-            // ✨ 映射专属面板强调色
-            Box(Modifier.size(3.dp, 14.dp).background(AppTheme.colors.overviewIndicatorColor, CircleShape))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 20.dp)) {
+            Box(Modifier.size(3.dp, 14.dp).background(indicatorColor, CircleShape))
             Spacer(Modifier.width(8.dp))
-            // ✨ 复用主文本色
-            Text("数据总览", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AppTheme.colors.textPrimary)
+            Text("数据总览", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = textPrimary)
         }
 
-        // --- 2. 核心支出区 (主数据) ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {
-                // ✨ 复用次要文本色
-                Text("本月累计支出", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
+                Text("${prefix}累计支出", fontSize = 12.sp, color = textSecondary)
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        "¥",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 4.dp, end = 2.dp),
-                        color = AppTheme.colors.textPrimary // ✨ 显式指定，防止深色模式变黑
-                    )
-                    Text(
-                        stats.totalExpense,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black,
-                        color = AppTheme.colors.textPrimary // ✨ 显式指定
-                    )
+                    Text("¥", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp, end = 2.dp), color = textPrimary)
+                    Text(stats.totalExpense, fontSize = 32.sp, fontWeight = FontWeight.Black, color = textPrimary)
                 }
             }
-            // 右侧辅助数据：预算剩余
             Column(horizontalAlignment = Alignment.End) {
-                Text("预算剩余", fontSize = 11.sp, color = AppTheme.colors.textSecondary) // ✨
+                Text("${prefix}预算剩余", fontSize = 11.sp, color = textSecondary)
                 val remaining = (budget - expense).coerceAtLeast(0.0)
-                Text(
-                    "¥${String.format("%.0f", remaining)}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.textPrimary // ✨
-                )
+                Text("¥${String.format("%.0f", remaining)}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = textPrimary)
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // --- 3. 可视化进度条 (高级感核心) ---
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("预算使用进度", fontSize = 11.sp, color = AppTheme.colors.textSecondary) // ✨
-                // ✨ 映射专属面板强调色
-                Text("$usagePercent%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AppTheme.colors.overviewIndicatorColor)
+                Text("预算使用进度", fontSize = 11.sp, color = textSecondary)
+                // ✨ 显示修复后的精准百分比
+                Text(usagePercentStr, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = indicatorColor)
             }
             Spacer(Modifier.height(8.dp))
-            // 细长的进度条背景
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(CircleShape)
-                    // ✨ 复用表层灰底色
-                    .background(AppTheme.colors.surfaceVariant)
-            ) {
-                // 渐变进度条
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(usageRate)
-                        .fillMaxHeight()
-                        .background(
-                            // ✨ 完美复用我们为图表设计的渐变配置 (由于原图是从绿到蓝，这里反转组合即可)
-                            brush = Brush.horizontalGradient(
-                                listOf(AppTheme.colors.chartGradientEnd, AppTheme.colors.chartGradientStart)
-                            )
-                        )
-                )
+            Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(surfaceVariant)) {
+                Box(modifier = Modifier.fillMaxWidth(usageRate).fillMaxHeight().background(
+                    brush = Brush.horizontalGradient(listOf(gradientEnd, gradientStart))
+                ))
             }
         }
 
         Spacer(Modifier.height(24.dp))
 
-        // --- 4. 底部次要数据网格 (收入 & 结余) ---
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                // ✨ 映射专属子面板底色
-                .background(AppTheme.colors.overviewSubPanelBg)
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(subPanelBg).padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // ✨ 总收入数值色复用主文本色 (原 0xFF1D1D1F)
-            DataMiniBox("总收入", "¥${stats.totalIncome}", AppTheme.colors.textPrimary)
-
-            // ✨ 垂直分割线复用全局分割线颜色
-            Box(Modifier.width(1.dp).height(20.dp).background(AppTheme.colors.dividerColor).align(Alignment.CenterVertically))
-
-            // ✨ 结余颜色完美复用全局的收支语义色
-            DataMiniBox(
-                "本月结余",
-                "¥$balanceStr",
-                if (balance >= 0) AppTheme.colors.incomeColor else AppTheme.colors.expenseColor
-            )
+            DataMiniBox("总收入", "¥${stats.totalIncome}", textPrimary)
+            Box(Modifier.width(1.dp).height(20.dp).background(dividerColor).align(Alignment.CenterVertically))
+            DataMiniBox("${prefix}结余", "¥$balanceStr", if (balance >= 0) incomeColor else expenseColor)
         }
     }
 }

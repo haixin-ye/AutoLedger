@@ -34,6 +34,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
@@ -367,7 +369,7 @@ fun AIHeader() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            Icons.Default.AutoAwesome,
+            Icons.Default.Lightbulb,
             contentDescription = null,
             tint = AppTheme.colors.brandAccent,
             modifier = Modifier.size(20.dp)

@@ -108,6 +108,17 @@ data class AppExtendedColors(
     val calendarTodayBackground: Color, // 今日日期的底块颜色
 
     // ----------------------------------------------------
+    // [明细] 年度热力宫格专属颜色 (YearlyHeatmap) ✨ 新增
+    // ----------------------------------------------------
+    val heatmapSurplusBase: Color,    // 结余为正的基础色 (淡)
+    val heatmapSurplusActive: Color,  // 结余为正的高亮色 (深)
+    val heatmapDeficitBase: Color,    // 结余为负的基础色 (淡)
+    val heatmapDeficitActive: Color,  // 结余为负的高亮色 (深)
+    val heatmapTextPrimary: Color,    // 格子内的主要文字
+    val heatmapTextSecondary: Color,  // 格子内的次要文字
+    val heatmapTextOnActive: Color,   // 在高亮色上的反白文字
+
+    // ----------------------------------------------------
     // [明细] 数据总览面板 (PremiumBlockCard)
     // ----------------------------------------------------
     val overviewIndicatorColor: Color,  // 标题竖线及进度百分比文字
@@ -166,6 +177,8 @@ data class AppExtendedColors(
     val switchThumbChecked: Color,  // Switch 开启时的圆形滑块颜色
     val logoutButtonText: Color,    // 退出登录按钮警示字
     val dialogConfirmText: Color    // 弹窗确认按钮文字色
+
+
 )
 
 // ==============================================================================
@@ -199,13 +212,13 @@ val LightAppColors = AppExtendedColors(
     categoryOther = Color(0xFF81ECEC),
 
     // --- [首页] 主资产卡片 (✨ 修复：还原高透亮蓝色渐变) ---
-    balanceCardGradientStart = Color(0xFF4776E6), // 柔和群青
-    balanceCardGradientEnd = Color(0xFF8E54E9),   // 优雅深紫
+    balanceCardGradientStart = Color(0xFF00C6FF), // 亮青蓝，充满活力
+    balanceCardGradientEnd = Color(0xFF0072FF),   // 深邃蓝，稳重可靠
     balanceCardTextPrimary = Color.White,
-    balanceCardTextSecondary = Color.White.copy(alpha = 0.8f),
+    balanceCardTextSecondary = Color.White.copy(alpha = 0.85f),
     balanceCardDailyAvgBg = Color.White.copy(alpha = 0.2f),
     balanceCardDailyAvgText = Color.White,
-    balanceCardCircleDecoration = Color.White.copy(alpha = 0.1f),
+    balanceCardCircleDecoration = Color.White.copy(alpha = 0.15f),
 
     // --- [首页] 预算健康度仪表盘 ---
     gaugeSafe = Color(0xFF2ED573),
@@ -230,6 +243,15 @@ val LightAppColors = AppExtendedColors(
     // --- [明细] 顶部账单日历 ---
     calendarTodayText = Color(0xFF1976D2),
     calendarTodayBackground = Color(0xFFDADDE0),
+
+    // --- [明细] 年度热力宫格 (浅色) ---
+    heatmapSurplusBase = Color(0xFFE1F5FE),    // 极淡的冰蓝
+    heatmapSurplusActive = Color(0xFF03A9F4),  // 饱满的亮蓝
+    heatmapDeficitBase = Color(0xFFFFEBEE),    // 极淡的粉红
+    heatmapDeficitActive = Color(0xFFFF5252),  // 饱满的鲜红
+    heatmapTextPrimary = Color(0xFF1D1D1F),
+    heatmapTextSecondary = Color(0xFF8E8E93),
+    heatmapTextOnActive = Color.White,
 
     // --- [明细] 数据总览面板 ---
     overviewIndicatorColor = Color(0xFF8FD3F4),
@@ -355,6 +377,15 @@ val DarkAppColors = AppExtendedColors(
     // --- [明细] 顶部账单日历  ---
     calendarTodayText = Color(0xFFD4B26A),       // 日期数字变成香槟金
     calendarTodayBackground = Color(0xFF2A2A2D), // 底块变成磨砂深灰
+
+    // --- [明细] 年度热力宫格 (深色) ---
+    heatmapSurplusBase = Color(0xFF2E3D30),    // 带有微弱绿光的深灰
+    heatmapSurplusActive = Color(0xFF68C971),  // 极具活力的霓虹青绿
+    heatmapDeficitBase = Color(0xFF3D2E2E),    // 带有微弱红光的深灰
+    heatmapDeficitActive = Color(0xFFE57373),  // 柔和但明亮的珊瑚红
+    heatmapTextPrimary = Color(0xFFE8E6E1),
+    heatmapTextSecondary = Color(0xFFA3A19C),
+    heatmapTextOnActive = Color(0xFF161618),   // 亮底色上用深黑字最清晰！
 
     // --- [明细] 数据总览面板 ---
     overviewIndicatorColor = Color(0xFFD4B26A),

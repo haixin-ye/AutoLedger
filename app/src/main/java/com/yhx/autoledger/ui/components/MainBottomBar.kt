@@ -22,42 +22,38 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.ui.navigation.bottomNavItems
-import com.yhx.autoledger.ui.theme.AppTheme // ✨ 引入全局主题
+import com.yhx.autoledger.ui.theme.AppTheme
 
 @Composable
 fun MainBottomBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit
 ) {
-    // 保留你原有的带阴影和毛玻璃感的底座，非常漂亮
     Surface(
-        // ✨ 复用底栏专属背景色，并保留高级透明度
         color = AppTheme.colors.bottomBarBackground.copy(alpha = 0.95f),
         tonalElevation = 8.dp,
         shadowElevation = 16.dp,
+        // ✨ 修改点 1：移除这里的 navigationBarsPadding()
         modifier = Modifier
             .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .navigationBarsPadding()
     ) {
-        // 弃用系统的 NavigationBar，改用 Row 彻底摆脱胶囊底色和系统限制
         Row(
+            // ✨ 修改点 2：将 padding 加到内部的 Row 这里，并且放在 height() 之前
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp),
+                .navigationBarsPadding() // 让内部内容被小白条顶起
+                .height(80.dp),          // 保持内容区域自身的高度为 80.dp
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
             bottomNavItems.forEach { screen ->
                 val selected = currentRoute == screen.route
 
-                // ✨ 加入颜色渐变动画，替代系统生硬的切换
                 val contentColor by animateColorAsState(
-                    // ✨ 选中用全局品牌色，未选中用全局弱提示色
                     targetValue = if (selected) AppTheme.colors.brandAccent else AppTheme.colors.textTertiary,
                     animationSpec = tween(durationMillis = 300),
                     label = "colorAnimation"
@@ -67,26 +63,23 @@ fun MainBottomBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier
-                        .weight(1f) // 均分宽度
+                        .weight(1f)
                         .fillMaxHeight()
-                        // ✨ 核心：彻底去掉水波纹和方形背景框
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) { onNavigate(screen.route) }
-                    // 如果你想加回自己的缩放动效，把 .bounceClick() 接在这里即可：
-                    // .bounceClick()
                 ) {
                     Icon(
                         imageVector = screen.icon,
                         contentDescription = screen.title,
-                        tint = contentColor // 图标颜色跟随动画
+                        tint = contentColor
                     )
-                    Spacer(Modifier.height(4.dp)) // 控制图文间距
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = screen.title,
                         fontSize = 12.sp,
-                        color = contentColor, // 文字颜色同步跟随动画，实现真正的“图文一体”
+                        color = contentColor,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                     )
                 }
