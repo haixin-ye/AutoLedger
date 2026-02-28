@@ -16,21 +16,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.ui.components.*
-import com.yhx.autoledger.ui.navigation.Screen
 import com.yhx.autoledger.ui.theme.AppDesignSystem
 
 @Composable
 fun SettingsScreen(
     currentTheme: Int,
+    currentBookName: String,
     onThemeChange: (Int) -> Unit,
     onNavigateToImportExport: () -> Unit,
-    onNavigateToCategoryManage: () -> Unit// ✨ 新增导航回调
+    onNavigateToCategoryManage: () -> Unit,
+    onNavigateToBookManage: () -> Unit // ✨ 新增：前往账本管理的导航回调
 ) {
     val context = LocalContext.current
     var isLoggedIn by remember { mutableStateOf(true) }
     var showThemeDialog by remember { mutableStateOf(false) }
 
-    // 状态管理
     var isAutoRecordingEnabled by remember { mutableStateOf(false) }
     var isPrivacyLockEnabled by remember { mutableStateOf(false) }
 
@@ -40,7 +40,6 @@ fun SettingsScreen(
             .background(AppDesignSystem.colors.appBackground),
         contentPadding = PaddingValues(bottom = AppDesignSystem.dimens.spacingLarge * 2)
     ) {
-        // 1. 顶部大标题
         item {
             Text(
                 text = "我的",
@@ -55,7 +54,6 @@ fun SettingsScreen(
             )
         }
 
-        // 2. 个人信息资产卡片
         item {
             ProfileCard(
                 isLoggedIn = isLoggedIn,
@@ -63,20 +61,20 @@ fun SettingsScreen(
             )
         }
 
-        // 3. 账务管理模块 (根据您的新需求补全)
         item {
             SettingsGroup(title = "账务与分类") {
+                // ✨ 核心修改：接入前往账本管理的事件
                 SettingClickRow(
                     icon = Icons.Rounded.AccountBalanceWallet,
                     iconTint = AppDesignSystem.colors.brandAccent,
-                    title = "账本管理",
-                    value = "默认账本",
-                    onClick = { /* TODO: 跳转账本 */ }
+                    title = "多账本管理",
+                    value = currentBookName,
+                    onClick = onNavigateToBookManage
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = AppDesignSystem.colors.dividerColor)
                 SettingClickRow(
                     icon = Icons.Rounded.Category,
-                    iconTint = AppDesignSystem.colors.categoryFood, // 使用财务分类色
+                    iconTint = AppDesignSystem.colors.categoryFood,
                     title = "收支分类管理",
                     value = "",
                     onClick = onNavigateToCategoryManage
@@ -87,12 +85,11 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.categoryTransport,
                     title = "支付渠道配置",
                     value = "微信 / 支付宝",
-                    onClick = { /* TODO: 跳转渠道配置 */ }
+                    onClick = { /* TODO */ }
                 )
             }
         }
 
-        // 4. AI 与自动化模块
         item {
             SettingsGroup(title = "AI 与自动化") {
                 SettingSwitchRow(
@@ -102,7 +99,6 @@ fun SettingsScreen(
                     subtitle = if (isAutoRecordingEnabled) "正在后台捕捉支付数据" else "需开启系统无障碍权限",
                     initialChecked = isAutoRecordingEnabled,
                     onCheckedChange = {
-                        // 引导用户去系统设置开启权限
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         isAutoRecordingEnabled = it
                     }
@@ -113,20 +109,19 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.brandAccent,
                     title = "AI 助手人设与语气",
                     value = "专业管家",
-                    onClick = { /* TODO: 设置人设 */ }
+                    onClick = { /* TODO */ }
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = AppDesignSystem.colors.dividerColor)
                 SettingClickRow(
                     icon = Icons.Rounded.Memory,
-                    iconTint = AppDesignSystem.colors.categoryShop, // 专属颜色
+                    iconTint = AppDesignSystem.colors.categoryShop,
                     title = "AI 专属记忆管理",
                     value = "优化学习模型",
-                    onClick = { /* TODO: 管理AI上下文 */ }
+                    onClick = { /* TODO */ }
                 )
             }
         }
 
-        // 5. 数据与安全模块
         item {
             SettingsGroup(title = "数据与安全") {
                 SettingClickRow(
@@ -134,16 +129,15 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.iconBgCloud,
                     title = "数据云端同步",
                     value = "刚刚同步",
-                    onClick = { /* TODO: 同步逻辑 */ }
+                    onClick = { /* TODO */ }
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = AppDesignSystem.colors.dividerColor)
-                // ✨ 修改这里：更新文案，并接入导航
                 SettingClickRow(
                     icon = Icons.Rounded.ImportExport,
                     iconTint = AppDesignSystem.colors.iconBgExport,
-                    title = "导入/导出数据", // 修改了名称
+                    title = "导入/导出数据",
                     value = "aldata",
-                    onClick = onNavigateToImportExport // 点击进入子页面
+                    onClick = onNavigateToImportExport
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = AppDesignSystem.colors.dividerColor)
                 SettingSwitchRow(
@@ -157,10 +151,8 @@ fun SettingsScreen(
             }
         }
 
-        // 6. 通用设置
         item {
             SettingsGroup(title = "通用设置") {
-                // 已有的主题选择器入口
                 ThemeSelectionRow(
                     currentTheme = currentTheme,
                     onThemeChange = onThemeChange
@@ -171,7 +163,7 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.iconBgAlert,
                     title = "记账提醒",
                     value = "每天 20:00",
-                    onClick = { /* TODO: 时间选择器 */ }
+                    onClick = { /* TODO */ }
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = AppDesignSystem.colors.dividerColor)
                 SettingClickRow(
@@ -179,12 +171,11 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.textSecondary,
                     title = "关于 AutoLedger",
                     value = "v1.0.0",
-                    onClick = { /* TODO: 关于我们 */ }
+                    onClick = { /* TODO */ }
                 )
             }
         }
 
-        // 7. 退出登录按钮
         if (isLoggedIn) {
             item {
                 Spacer(Modifier.height(AppDesignSystem.dimens.spacingLarge))
@@ -210,7 +201,6 @@ fun SettingsScreen(
         }
     }
 
-    // 弹窗层
     if (showThemeDialog) {
         ThemeSelectionDialog(
             currentTheme = currentTheme,

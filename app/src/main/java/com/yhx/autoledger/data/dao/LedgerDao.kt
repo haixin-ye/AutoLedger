@@ -28,25 +28,25 @@ interface LedgerDao {
     suspend fun deleteLedgersByIds(ids: List<Long>)
 
     // 2. 首页展示：获取所有账单（按时间倒序排列，最新的在最上面）
-    @Query("SELECT * FROM ledgers ORDER BY timestamp DESC")
-    fun getAllLedgersDesc(): Flow<List<LedgerEntity>>
+    @Query("SELECT * FROM ledgers WHERE bookId = :bookId ORDER BY timestamp DESC")
+    fun getAllLedgersDesc(bookId: Long): Flow<List<LedgerEntity>>
 
     // 3. 明细页展示：获取特定时间段（某个月）的所有账单
-    @Query("SELECT * FROM ledgers WHERE timestamp >= :startTime AND timestamp <= :endTime ORDER BY timestamp DESC")
-    fun getLedgersBetween(startTime: Long, endTime: Long): Flow<List<LedgerEntity>>
+    @Query("SELECT * FROM ledgers WHERE bookId = :bookId AND timestamp >= :startTime AND timestamp <= :endTime ORDER BY timestamp DESC")
+    fun getLedgersBetween(bookId: Long, startTime: Long, endTime: Long): Flow<List<LedgerEntity>>
 
     // 4. 统计功能：计算特定时间段的总支出 (type = 0) 或 总收入 (type = 1)
     // 返回 Double? 是因为如果该月没有数据，SUM() 会返回 NULL
-    @Query("SELECT SUM(amount) FROM ledgers WHERE type = :type AND timestamp >= :startTime AND timestamp <= :endTime")
-    fun getTotalAmountBetween(startTime: Long, endTime: Long, type: Int): Flow<Double?>
+    @Query("SELECT SUM(amount) FROM ledgers WHERE bookId = :bookId AND type = :type AND timestamp >= :startTime AND timestamp <= :endTime")
+    fun getTotalAmountBetween(bookId: Long, startTime: Long, endTime: Long, type: Int): Flow<Double?>
 
     // 5. 饼图核心：按分类统计某段时间的支出总和 (GROUP BY)
     @Query("""
         SELECT categoryName, categoryIcon, SUM(amount) as totalAmount 
         FROM ledgers 
-        WHERE type = :type AND timestamp >= :startTime AND timestamp <= :endTime 
+        WHERE bookId = :bookId AND type = :type AND timestamp >= :startTime AND timestamp <= :endTime 
         GROUP BY categoryName 
         ORDER BY totalAmount DESC
     """)
-    fun getCategorySumBetween(startTime: Long, endTime: Long, type: Int = 0): Flow<List<CategorySum>>
+    fun getCategorySumBetween(bookId: Long, startTime: Long, endTime: Long, type: Int = 0): Flow<List<CategorySum>>
 }

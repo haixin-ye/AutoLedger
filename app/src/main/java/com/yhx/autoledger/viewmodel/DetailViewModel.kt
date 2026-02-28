@@ -36,17 +36,22 @@ class DetailViewModel @Inject constructor(
     val monthOffset = MutableStateFlow(0)
     private val selectedYear = MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))
 
+    // ✨ 核心新增：获取当前的账本 ID
+    val currentBookId: StateFlow<Long> = userPrefs.currentBookId
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1L)
+
     val monthlyBudget: StateFlow<Double> = monthOffset.flatMapLatest { offset ->
         val key = DateUtils.getYearMonthKey(offset)
         userPrefs.getMonthlyBudget(key)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5000.0)
 
-    private val totalExpenseFlow = monthOffset.flatMapLatest { offset ->
-        repository.getTotalAmountBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 0).map { it ?: 0.0 }
+    // ✨ 改造所有的查询流，联合监听 (月份 + 账本ID)，传递 bookId
+    private val totalExpenseFlow = combine(monthOffset, currentBookId, ::Pair).flatMapLatest { (offset, bookId) ->
+        repository.getTotalAmountBetween(bookId, DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 0).map { it ?: 0.0 }
     }
 
-    private val totalIncomeFlow = monthOffset.flatMapLatest { offset ->
-        repository.getTotalAmountBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 1).map { it ?: 0.0 }
+    private val totalIncomeFlow = combine(monthOffset, currentBookId, ::Pair).flatMapLatest { (offset, bookId) ->
+        repository.getTotalAmountBetween(bookId, DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 1).map { it ?: 0.0 }
     }
 
     val monthlyStats: StateFlow<MonthlyStats> = combine(
@@ -64,8 +69,8 @@ class DetailViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyStats("0.00", "0.00", "0.00", "0.00"))
 
-    val dailyRecordsMap: StateFlow<Map<Int, DailyRecord>> = monthOffset.flatMapLatest { offset ->
-        repository.getLedgersBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset))
+    val dailyRecordsMap: StateFlow<Map<Int, DailyRecord>> = combine(monthOffset, currentBookId, ::Pair).flatMapLatest { (offset, bookId) ->
+        repository.getLedgersBetween(bookId, DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset))
             .map { ledgers ->
                 ledgers.groupBy { ledger ->
                     Calendar.getInstance().apply { timeInMillis = ledger.timestamp }.get(Calendar.DAY_OF_MONTH)
@@ -77,8 +82,8 @@ class DetailViewModel @Inject constructor(
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    val yearlyMonthlyRecordsMap: StateFlow<Map<Int, MonthlyRecord>> = selectedYear.flatMapLatest { year ->
-        repository.getLedgersBetween(getYearStart(year), getYearEnd(year))
+    val yearlyMonthlyRecordsMap: StateFlow<Map<Int, MonthlyRecord>> = combine(selectedYear, currentBookId, ::Pair).flatMapLatest { (year, bookId) ->
+        repository.getLedgersBetween(bookId, getYearStart(year), getYearEnd(year))
             .map { ledgers ->
                 ledgers.groupBy { ledger ->
                     Calendar.getInstance().apply { timeInMillis = ledger.timestamp }.get(Calendar.MONTH) + 1
@@ -90,8 +95,8 @@ class DetailViewModel @Inject constructor(
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    val categoryPercentages: StateFlow<List<CategoryPercentage>> = monthOffset.flatMapLatest { offset ->
-        repository.getCategorySumBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 0)
+    val categoryPercentages: StateFlow<List<CategoryPercentage>> = combine(monthOffset, currentBookId, ::Pair).flatMapLatest { (offset, bookId) ->
+        repository.getCategorySumBetween(bookId, DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset), 0)
             .map { categorySums ->
                 val totalAmount = categorySums.sumOf { it.totalAmount }
                 if (totalAmount == 0.0) return@map emptyList()
@@ -102,15 +107,14 @@ class DetailViewModel @Inject constructor(
                         amount = String.format("%.2f", sum.totalAmount),
                         percentage = (sum.totalAmount / totalAmount).toFloat(),
                         icon = sum.categoryIcon ?: "🏷️",
-                        // ✨ 修复：不再处理颜色，赋透明值，UI 会通过 AppDesignSystem 自动上色
                         color = Color.Transparent
                     )
                 }
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val currentMonthLedgers: StateFlow<List<LedgerEntity>> = monthOffset.flatMapLatest { offset ->
-        repository.getLedgersBetween(DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset))
+    val currentMonthLedgers: StateFlow<List<LedgerEntity>> = combine(monthOffset, currentBookId, ::Pair).flatMapLatest { (offset, bookId) ->
+        repository.getLedgersBetween(bookId, DateUtils.getMonthStart(offset), DateUtils.getMonthEnd(offset))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 
@@ -122,7 +126,6 @@ class DetailViewModel @Inject constructor(
         selectedYear.value = targetYear
     }
 
-    // ✨ 核心修复：真实年度预算 = 动态查询该年份 12 个月的独立预算之和
     val yearlyBudget: StateFlow<Double> = selectedYear.flatMapLatest { year ->
         val budgetFlows = (1..12).map { month ->
             userPrefs.getMonthlyBudget("${year}_${String.format("%02d", month)}")
@@ -130,12 +133,12 @@ class DetailViewModel @Inject constructor(
         combine(budgetFlows) { budgets -> budgets.sum() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    private val yearlyExpenseFlow = selectedYear.flatMapLatest { year ->
-        repository.getTotalAmountBetween(getYearStart(year), getYearEnd(year), 0).map { it ?: 0.0 }
+    private val yearlyExpenseFlow = combine(selectedYear, currentBookId, ::Pair).flatMapLatest { (year, bookId) ->
+        repository.getTotalAmountBetween(bookId, getYearStart(year), getYearEnd(year), 0).map { it ?: 0.0 }
     }
 
-    private val yearlyIncomeFlow = selectedYear.flatMapLatest { year ->
-        repository.getTotalAmountBetween(getYearStart(year), getYearEnd(year), 1).map { it ?: 0.0 }
+    private val yearlyIncomeFlow = combine(selectedYear, currentBookId, ::Pair).flatMapLatest { (year, bookId) ->
+        repository.getTotalAmountBetween(bookId, getYearStart(year), getYearEnd(year), 1).map { it ?: 0.0 }
     }
 
     val yearlyStats: StateFlow<MonthlyStats> = combine(
@@ -158,8 +161,8 @@ class DetailViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyStats("0.00", "0.00", "0.00", "0.00"))
 
-    val yearlyCategoryPercentages: StateFlow<List<CategoryPercentage>> = selectedYear.flatMapLatest { year ->
-        repository.getCategorySumBetween(getYearStart(year), getYearEnd(year), 0).map { categorySums ->
+    val yearlyCategoryPercentages: StateFlow<List<CategoryPercentage>> = combine(selectedYear, currentBookId, ::Pair).flatMapLatest { (year, bookId) ->
+        repository.getCategorySumBetween(bookId, getYearStart(year), getYearEnd(year), 0).map { categorySums ->
             val totalAmount = categorySums.sumOf { it.totalAmount }
             if (totalAmount == 0.0) return@map emptyList()
 
@@ -167,14 +170,14 @@ class DetailViewModel @Inject constructor(
                 CategoryPercentage(
                     name = sum.categoryName, amount = String.format("%.2f", sum.totalAmount),
                     percentage = (sum.totalAmount / totalAmount).toFloat(), icon = sum.categoryIcon ?: "🏷️",
-                    color = Color.Transparent // 交给 UI 处理
+                    color = Color.Transparent
                 )
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val currentYearLedgers: StateFlow<List<LedgerEntity>> = selectedYear.flatMapLatest { year ->
-        repository.getLedgersBetween(getYearStart(year), getYearEnd(year))
+    val currentYearLedgers: StateFlow<List<LedgerEntity>> = combine(selectedYear, currentBookId, ::Pair).flatMapLatest { (year, bookId) ->
+        repository.getLedgersBetween(bookId, getYearStart(year), getYearEnd(year))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // 🛠 辅助方法

@@ -6,19 +6,27 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.yhx.autoledger.data.dao.AccountBookDao
 import com.yhx.autoledger.data.dao.CategoryDao
 import com.yhx.autoledger.data.dao.LedgerDao
+import com.yhx.autoledger.data.entity.AccountBookEntity
 import com.yhx.autoledger.data.entity.CategoryEntity
 import com.yhx.autoledger.data.entity.LedgerEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [LedgerEntity::class, CategoryEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [LedgerEntity::class, CategoryEntity::class, AccountBookEntity::class],
+    version = 1,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun ledgerDao(): LedgerDao
     abstract fun categoryDao(): CategoryDao
+
+    abstract fun accountBookDao(): AccountBookDao
 
     companion object {
         @Volatile
@@ -73,6 +81,28 @@ abstract class AppDatabase : RoomDatabase() {
                         )
                         dao.insertAll(defaultCategories)
 
+                        val bookDao = database.accountBookDao()
+                        val defaultBooks = listOf(
+                            AccountBookEntity(
+                                id = 1L,
+                                name = "日常账本",
+                                coverColor = 0xFF42A5F5.toInt(),
+                                isSystemDefault = true
+                            ),
+                            AccountBookEntity(
+                                id = 2L,
+                                name = "生意账本",
+                                coverColor = 0xFFFFA726.toInt(),
+                                isSystemDefault = true
+                            ),
+                            AccountBookEntity(
+                                id = 3L,
+                                name = "旅行账本",
+                                coverColor = 0xFF66BB6A.toInt(),
+                                isSystemDefault = true
+                            )
+                        )
+                        bookDao.insertAllBooks(defaultBooks)
 
                     }
                 }

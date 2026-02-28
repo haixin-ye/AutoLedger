@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
-// ✨ 新增：Navigation 的必备导入
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -43,13 +42,13 @@ import com.yhx.autoledger.ui.components.MainBottomBar
 import com.yhx.autoledger.ui.components.ManualAddSheet
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.navigation.Screen
-import com.yhx.autoledger.ui.navigation.Screen.AI.icon
 import com.yhx.autoledger.ui.screens.AIScreen
+import com.yhx.autoledger.ui.screens.BookManageScreen // ✨ 导入账本管理页
 import com.yhx.autoledger.ui.screens.CategoryManageScreen
 import com.yhx.autoledger.ui.screens.DetailScreen
 import com.yhx.autoledger.ui.screens.HomeScreen
 import com.yhx.autoledger.ui.screens.SettingsScreen
-import com.yhx.autoledger.ui.screens.DataImportExportScreen // ✨ 导入刚才写好的子页面
+import com.yhx.autoledger.ui.screens.DataImportExportScreen
 import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.ui.theme.AutoLedgerTheme
 import com.yhx.autoledger.viewmodel.HomeViewModel
@@ -83,21 +82,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themePreference by mainViewModel.themePreference.collectAsState()
 
+            // ✨ 获取全局的 currentBookId
+            val currentBookId by mainViewModel.currentBookId.collectAsState()
+
+            // ✨ 1. 观察当前账本对象
+            val currentBook by mainViewModel.currentBook.collectAsState()
             AutoLedgerTheme(themePreference = themePreference) {
 
-
-                // ✨ 1. 创建全局唯一的导航控制器
                 val navController = rememberNavController()
 
-                // ✨ 2. 使用 NavHost 构建路由图
                 NavHost(
                     navController = navController,
-                    startDestination = "main_tabs" // 起始页面是带底部导航栏的主模块
+                    startDestination = "main_tabs"
                 ) {
-
-                    // ==========================================
-                    // 🚀 模块一：带有 BottomBar 和 Pager 的主模块
-                    // ==========================================
                     composable("main_tabs") {
                         DoubleBackToExitHandler()
                         val tabOrder = remember {
@@ -113,12 +110,9 @@ class MainActivity : ComponentActivity() {
                                 MainBottomBar(
                                     currentRoute = tabOrder[pagerState.currentPage].route,
                                     onNavigate = { route ->
-                                        val targetIndex =
-                                            tabOrder.indexOfFirst { it.route == route }
+                                        val targetIndex = tabOrder.indexOfFirst { it.route == route }
                                         if (targetIndex != -1) {
-                                            coroutineScope.launch {
-                                                pagerState.scrollToPage(targetIndex)
-                                            }
+                                            coroutineScope.launch { pagerState.scrollToPage(targetIndex) }
                                         }
                                     }
                                 )
@@ -130,25 +124,15 @@ class MainActivity : ComponentActivity() {
                                         containerColor = AppDesignSystem.colors.brandAccent,
                                         contentColor = Color.White,
                                         shape = CircleShape,
-                                        modifier = Modifier
-                                            .padding(bottom = 16.dp)
-                                            .bounceClick()
+                                        modifier = Modifier.padding(bottom = 16.dp).bounceClick()
                                     ) {
-                                        Icon(
-                                            Icons.Default.Add,
-                                            contentDescription = "手动记账",
-                                            modifier = Modifier.size(28.dp)
-                                        )
+                                        Icon(Icons.Default.Add, "手动记账", modifier = Modifier.size(28.dp))
                                     }
                                 }
                             },
                             containerColor = AppDesignSystem.colors.appBackground
                         ) { innerPadding ->
-                            Box(
-                                modifier = Modifier
-                                    .padding(innerPadding)
-                                    .consumeWindowInsets(innerPadding)
-                            ) {
+                            Box(modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) {
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
@@ -158,39 +142,34 @@ class MainActivity : ComponentActivity() {
                                         Screen.Home.route -> HomeScreen()
                                         Screen.Detail.route -> DetailScreen()
                                         Screen.AI.route -> AIScreen()
-
-                                        // ✨ 3. 修复报错核心：传递正确的参数，去除多余的逗号
                                         Screen.Settings.route -> SettingsScreen(
                                             currentTheme = themePreference,
-                                            onThemeChange = { newTheme ->
-                                                mainViewModel.updateTheme(newTheme)
-                                            },
-                                            onNavigateToImportExport = {
-                                                navController.navigate(Screen.DataImportExport.route)
-                                            },
-                                            onNavigateToCategoryManage = { // ✨ 在这里实现真正的导航跳转
-                                                navController.navigate(Screen.CategoryManage.route)
-                                            }
+                                            currentBookName = currentBook?.name ?: "读取中...",
+                                            onThemeChange = { mainViewModel.updateTheme(it) },
+                                            onNavigateToImportExport = { navController.navigate(Screen.DataImportExport.route) },
+                                            onNavigateToCategoryManage = { navController.navigate(Screen.CategoryManage.route) },
+                                            // ✨ 修复：传递账本管理的导航回调
+                                            onNavigateToBookManage = { navController.navigate(Screen.BookManage.route) }
                                         )
                                     }
                                 }
                             }
 
-                            // 挂载弹窗组件
                             val homeViewModel: HomeViewModel = hiltViewModel()
 
                             if (showAddSheet) {
                                 ManualAddSheet(
                                     onDismiss = { showAddSheet = false },
-                                    // 确保参数列表包含 icon (String类型)
                                     onSave = { type, category, icon, amount, remark, timestamp ->
                                         val parsedAmount = amount.toDoubleOrNull() ?: 0.0
-                                        // homeViewModel.addLedger 要求的 categoryIcon 是 String
+
+                                        // ✨ 修复：保存账单时必须传入 currentBookId
                                         homeViewModel.addLedger(
+                                            bookId = currentBookId, // 👈 绑定当前选中的账本
                                             amount = parsedAmount,
                                             type = type,
                                             categoryName = category,
-                                            categoryIcon = icon, // ✨ 直接使用传回来的 emoji 或字符串
+                                            categoryIcon = icon,
                                             timestamp = timestamp,
                                             note = remark
                                         )
@@ -200,21 +179,18 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // ==========================================
-                    // 🚀 模块二：无底部导航的独立子页面 (全屏覆盖)
-                    // ==========================================
                     composable(Screen.DataImportExport.route) {
-                        DataImportExportScreen(
-                            onBack = { navController.popBackStack() }
-                        )
+                        DataImportExportScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(Screen.CategoryManage.route) {
-                        CategoryManageScreen(
-                            onBack = { navController.popBackStack() }
-                        )
+                        CategoryManageScreen(onBack = { navController.popBackStack() })
                     }
-                    // 未来其他的子页面（如分类管理等）都可以在这里继续添加！
+
+                    // ✨ 修复：挂载全新的账本管理页面
+                    composable(Screen.BookManage.route) {
+                        BookManageScreen(onBack = { navController.popBackStack() })
+                    }
                 }
             }
         }
