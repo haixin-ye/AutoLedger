@@ -25,7 +25,8 @@ fun SettingsScreen(
     onThemeChange: (Int) -> Unit,
     onNavigateToImportExport: () -> Unit,
     onNavigateToCategoryManage: () -> Unit,
-    onNavigateToBookManage: () -> Unit // ✨ 新增：前往账本管理的导航回调
+    onNavigateToBookManage: () -> Unit, // ✨ 新增：前往账本管理的导航回调
+    onNavigateToAiMemory: () -> Unit
 ) {
     val context = LocalContext.current
     var isLoggedIn by remember { mutableStateOf(true) }
@@ -116,8 +117,8 @@ fun SettingsScreen(
                     icon = Icons.Rounded.Memory,
                     iconTint = AppDesignSystem.colors.categoryShop,
                     title = "AI 专属记忆管理",
-                    value = "优化学习模型",
-                    onClick = { /* TODO */ }
+                    value = "优化AI模型",
+                    onClick = onNavigateToAiMemory // ✨ 绑定跳转
                 )
             }
         }

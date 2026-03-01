@@ -37,6 +37,7 @@ import java.time.YearMonth
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
+import androidx.activity.compose.BackHandler
 
 // ✨ 新增组件：每日详细账单列表
 @Composable
@@ -48,7 +49,11 @@ fun DailyDetailView(
     onSaveLedger: (LedgerEntity) -> Unit,
     onDeleteLedger: (LedgerEntity) -> Unit
 ) {
-    // 1. 过滤并排序账单
+
+    // ✨ 新增：拦截系统的返回键和侧滑返回手势，让它执行自定义的回退逻辑
+    BackHandler {
+        onBack()
+    }
     val dayLedgers = remember(allLedgers, day, month) {
         allLedgers.filter { ledger ->
             val cal = Calendar.getInstance().apply { timeInMillis = ledger.timestamp }
@@ -65,7 +70,6 @@ fun DailyDetailView(
             .fillMaxSize()
             .background(AppDesignSystem.colors.appBackground)
     ) {
-        // 顶部栏
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -99,7 +103,6 @@ fun DailyDetailView(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(dayLedgers) { ledger ->
-                    // ✨ 核心修复点 1：将 LedgerEntity 转换为 RefinedTransactionItem 需要的 TransactionData
                     val displayData = remember(ledger) {
                         val color = when (ledger.categoryName) {
                             "餐饮" -> CategoryFood
@@ -119,7 +122,6 @@ fun DailyDetailView(
                         )
                     }
 
-                    // ✨ 核心修复点 2：使用正确的组件名 RefinedTransactionItem
                     RefinedTransactionItem(
                         data = displayData,
                         onClick = { selectedLedger = ledger }
@@ -130,7 +132,6 @@ fun DailyDetailView(
     }
 
     if (selectedLedger != null) {
-        // ✨ 核心修复点 3：使用正确的参数名 initialLedger
         EditLedgerSheet(
             initialLedger = selectedLedger!!,
             onDismiss = { selectedLedger = null },

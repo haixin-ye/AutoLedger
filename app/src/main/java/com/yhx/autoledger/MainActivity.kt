@@ -43,6 +43,7 @@ import com.yhx.autoledger.ui.components.ManualAddSheet
 import com.yhx.autoledger.ui.components.bounceClick
 import com.yhx.autoledger.ui.navigation.Screen
 import com.yhx.autoledger.ui.screens.AIScreen
+import com.yhx.autoledger.ui.screens.AiMemoryManageScreen
 import com.yhx.autoledger.ui.screens.BookManageScreen // ✨ 导入账本管理页
 import com.yhx.autoledger.ui.screens.CategoryManageScreen
 import com.yhx.autoledger.ui.screens.DetailScreen
@@ -105,14 +106,22 @@ class MainActivity : ComponentActivity() {
                         val coroutineScope = rememberCoroutineScope()
                         var showAddSheet by remember { mutableStateOf(false) }
 
+                        // ✨ 1. 新增状态：控制 HorizontalPager 是否响应用户滑动
+                        var isPagerScrollable by remember { mutableStateOf(true) }
+
                         Scaffold(
                             bottomBar = {
                                 MainBottomBar(
                                     currentRoute = tabOrder[pagerState.currentPage].route,
                                     onNavigate = { route ->
-                                        val targetIndex = tabOrder.indexOfFirst { it.route == route }
+                                        val targetIndex =
+                                            tabOrder.indexOfFirst { it.route == route }
                                         if (targetIndex != -1) {
-                                            coroutineScope.launch { pagerState.scrollToPage(targetIndex) }
+                                            coroutineScope.launch {
+                                                pagerState.scrollToPage(
+                                                    targetIndex
+                                                )
+                                            }
                                         }
                                     }
                                 )
@@ -124,32 +133,60 @@ class MainActivity : ComponentActivity() {
                                         containerColor = AppDesignSystem.colors.brandAccent,
                                         contentColor = Color.White,
                                         shape = CircleShape,
-                                        modifier = Modifier.padding(bottom = 16.dp).bounceClick()
+                                        modifier = Modifier
+                                            .padding(bottom = 16.dp)
+                                            .bounceClick()
                                     ) {
-                                        Icon(Icons.Default.Add, "手动记账", modifier = Modifier.size(28.dp))
+                                        Icon(
+                                            Icons.Default.Add,
+                                            "手动记账",
+                                            modifier = Modifier.size(28.dp)
+                                        )
                                     }
                                 }
                             },
                             containerColor = AppDesignSystem.colors.appBackground
                         ) { innerPadding ->
-                            Box(modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(innerPadding)
+                                    .consumeWindowInsets(innerPadding)
+                            ) {
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    beyondBoundsPageCount = 2
+                                    beyondBoundsPageCount = 2,
+                                    // ✨ 2. 将状态绑定到 Pager 的 userScrollEnabled 属性上
+                                    userScrollEnabled = isPagerScrollable
                                 ) { pageIndex ->
                                     when (tabOrder[pageIndex].route) {
                                         Screen.Home.route -> HomeScreen()
-                                        Screen.Detail.route -> DetailScreen()
+
+                                        // ✨ 3. 接收子页面状态回调，当子页面可见时，禁用滑动；否则恢复滑动
+                                        Screen.Detail.route -> DetailScreen(
+                                            onSubPageVisible = { isSubPageVisible ->
+                                                isPagerScrollable = !isSubPageVisible
+                                            }
+                                        )
+
                                         Screen.AI.route -> AIScreen()
                                         Screen.Settings.route -> SettingsScreen(
                                             currentTheme = themePreference,
                                             currentBookName = currentBook?.name ?: "读取中...",
                                             onThemeChange = { mainViewModel.updateTheme(it) },
-                                            onNavigateToImportExport = { navController.navigate(Screen.DataImportExport.route) },
-                                            onNavigateToCategoryManage = { navController.navigate(Screen.CategoryManage.route) },
+                                            onNavigateToImportExport = {
+                                                navController.navigate(
+                                                    Screen.DataImportExport.route
+                                                )
+                                            },
+                                            onNavigateToCategoryManage = {
+                                                navController.navigate(
+                                                    Screen.CategoryManage.route
+                                                )
+                                            },
                                             // ✨ 修复：传递账本管理的导航回调
-                                            onNavigateToBookManage = { navController.navigate(Screen.BookManage.route) }
+                                            onNavigateToBookManage = { navController.navigate(Screen.BookManage.route) },
+                                            onNavigateToAiMemory = { navController.navigate(Screen.AiMemoryManage.route) }
                                         )
                                     }
                                 }
@@ -190,6 +227,10 @@ class MainActivity : ComponentActivity() {
                     // ✨ 修复：挂载全新的账本管理页面
                     composable(Screen.BookManage.route) {
                         BookManageScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(Screen.AiMemoryManage.route) {
+                        AiMemoryManageScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }

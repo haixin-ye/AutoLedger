@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.ImportExport
 import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material3.SegmentedButtonDefaults.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
@@ -23,6 +24,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 
     // ✨ 新增账本管理路由
     object BookManage : Screen("book_manage", "账本管理", Icons.Rounded.MenuBook)
+
+
+
+    // ✨ 新增 AI 记忆管理路由
+    object AiMemoryManage : Screen("ai_memory_manage", "AI记忆管理", Icons.Default.Face)
 //    // 传递 categoryName 和主题色 index
 //    object CategoryDetail : Screen("category_detail/{categoryName}/{colorIndex}", "分类详情", Icons.Default.List) {
 //        fun createRoute(categoryName: String, colorIndex: Int) = "category_detail/$categoryName/$colorIndex"

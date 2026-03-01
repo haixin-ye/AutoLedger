@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey // 导入 long 类型 key
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -25,9 +26,11 @@ class UserPreferencesRepository @Inject constructor(
     // 主题的 Key
     private val THEME_KEY = intPreferencesKey("theme_preference")
 
-    // ✨ 核心缺失的修复：必须在这里定义账本的 Key ！！
+    // 账本的 Key
     private val CURRENT_BOOK_ID_KEY = longPreferencesKey("current_book_id")
 
+    // AI 自定义记忆指令的 Key
+    private val AI_CUSTOM_INSTRUCTIONS_KEY = stringPreferencesKey("ai_custom_instructions")
 
     // ================== 账本相关 ==================
     // 获取当前账本 ID
@@ -71,6 +74,17 @@ class UserPreferencesRepository @Inject constructor(
         val key = doublePreferencesKey("budget_$yearMonthKey")
         context.dataStore.edit { preferences ->
             preferences[key] = newBudget
+        }
+    }
+
+    // ================== AI 记忆相关 ==================
+    val aiCustomInstructions: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[AI_CUSTOM_INSTRUCTIONS_KEY] ?: ""
+    }
+
+    suspend fun updateAiCustomInstructions(instructions: String) {
+        context.dataStore.edit { preferences ->
+            preferences[AI_CUSTOM_INSTRUCTIONS_KEY] = instructions
         }
     }
 }

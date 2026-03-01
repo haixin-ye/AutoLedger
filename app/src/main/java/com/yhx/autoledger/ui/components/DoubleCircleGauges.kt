@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -56,7 +57,7 @@ fun BudgetSettingSheet(
     var textValue by remember { mutableStateOf(currentBudget.toInt().toString()) }
 
     var maxSliderRange by remember { mutableStateOf(maxOf(5000f, currentBudget.toFloat())) }
-
+    val keyboardController = LocalSoftwareKeyboardController.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -98,6 +99,13 @@ fun BudgetSettingSheet(
                 BasicTextField(
                     value = textValue,
                     onValueChange = { newValue ->
+                        // ✨ 双重保险 第一层：拦截换行符
+                        if (newValue.contains("\n")) {
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                            return@BasicTextField // 结束这次输入处理
+                        }
+
                         val filtered = newValue.filter { it.isDigit() }
                         textValue = filtered
                         val parsed = filtered.toFloatOrNull() ?: 0f
@@ -107,12 +115,14 @@ fun BudgetSettingSheet(
                             maxSliderRange = parsed
                         }
                     },
+                    singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
                         onDone = {
+                            keyboardController?.hide()
                             focusManager.clearFocus()
                         }
                     ),

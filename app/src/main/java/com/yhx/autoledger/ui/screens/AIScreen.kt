@@ -460,11 +460,17 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
     val dashLineColor = AppDesignSystem.colors.dividerColor
     val displayDate = remember(preview.date) {
         try {
+            // 注意：如果你的项目最低版本支持，推荐用 LocalDate；
+            // 如果必须用 SimpleDateFormat，请尽量不要在列表项滚动时解析它，或者用一个全局静态工具类来处理
             val dateObj = inputSdf.parse(preview.date)
             if (dateObj != null) outputSdf.format(dateObj) else preview.date
         } catch (e: Exception) {
             preview.date
         }
+    }
+
+    val dashPathEffect = remember {
+        androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
     }
 
     Surface(
@@ -532,7 +538,7 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                         color = dashLineColor,
                         start = Offset(0f, 0f),
                         end = Offset(size.width, 0f),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
+                        pathEffect = dashPathEffect
                     )
                 }
 

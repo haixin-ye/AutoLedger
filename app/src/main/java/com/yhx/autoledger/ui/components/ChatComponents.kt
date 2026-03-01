@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
@@ -24,11 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.R
 import com.yhx.autoledger.ui.theme.AppDesignSystem
-
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 @Composable
 fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -> Unit) {
     Surface(
@@ -50,6 +54,14 @@ fun AdvancedChatInput(text: String, onTextChange: (String) -> Unit, onSend: () -
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = AppDesignSystem.colors.textPrimary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(
+                    onSend = {
+                        if (text.trim().isNotEmpty()) {
+                            onSend()
+                        }
+                    }
+                ),
                 decorationBox = { innerTextField ->
                     if (text.isEmpty()) {
                         Text("输入语音或文字记一笔...", color = AppDesignSystem.colors.textTertiary, fontSize = 15.sp)

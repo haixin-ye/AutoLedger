@@ -17,6 +17,7 @@ import com.google.gson.reflect.TypeToken
 import com.yhx.autoledger.data.entity.LedgerEntity
 import com.yhx.autoledger.data.network.LlmApiService
 import com.yhx.autoledger.data.repository.LedgerRepository
+import com.yhx.autoledger.data.repository.UserPreferencesRepository // ✨ 必须引入
 import com.yhx.autoledger.models.BillPreview
 import com.yhx.autoledger.models.ChatMessage
 import com.yhx.autoledger.models.ChatRequest
@@ -26,6 +27,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first // ✨ 必须引入
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.lang.reflect.Type
@@ -37,34 +40,28 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AIViewModel @Inject constructor(
-
     private val repository: LedgerRepository,
     private val apiService: LlmApiService,
+    private val userPrefs: UserPreferencesRepository, // ✨ 注入 DataStore 仓库获取当前账本
     @ApplicationContext private val context: Context
-
 ) : ViewModel() {
-    private val userVipLevel: Int = 1// 0:免费版, 1:普通会员, 2:高级会员(带上下文)
+    private val userVipLevel: Int = 1 // 0:免费版, 1:普通会员, 2:高级会员(带上下文)
     private val context_length = 6
     private val apiKey = "Bearer sk-b93a79d60e6445f89a214968e9273d71"
 
-    // ✨ 构造一个支持 Compose Color 的 Gson 解析器
+
+    // 1. 在 AIViewModel 类的变量声明区（init 上方），新增对指令流的监听：
+    private val _customInstructions = MutableStateFlow("")
+
+    // 构造一个支持 Compose Color 的 Gson 解析器
     private val gson = GsonBuilder()
         .registerTypeAdapter(Color::class.java, object : JsonSerializer<Color>,
             JsonDeserializer<Color> {
-            override fun serialize(
-                src: Color,
-                typeOfSrc: Type,
-                context: JsonSerializationContext
-            ): JsonElement {
-                return JsonPrimitive(src.toArgb()) // 颜色转数字
+            override fun serialize(src: Color, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
+                return JsonPrimitive(src.toArgb())
             }
-
-            override fun deserialize(
-                json: JsonElement,
-                typeOfT: Type,
-                context: JsonDeserializationContext
-            ): Color {
-                return Color(json.asInt) // 数字还原为颜色
+            override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): Color {
+                return Color(json.asInt)
             }
         })
         .create()
@@ -73,51 +70,64 @@ class AIViewModel @Inject constructor(
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
-
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    // ✨ 新增：维护当前数据库中所有可用的分类名称
     private val _availableCategories = MutableStateFlow<List<String>>(emptyList())
 
     init {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            // ✨ 1. 启动时从本地读取聊天记录
+            // 1. 先同步/挂起读取历史记录
             val historyJson = prefs.getString("chat_history", null)
-            if (historyJson != null) {
+            val initialList = if (historyJson != null) {
                 try {
                     val type = object : TypeToken<List<ChatMessage>>() {}.type
                     val history: List<ChatMessage> = gson.fromJson(historyJson, type)
-
-                    // ✨ 重点：通过 map 重新映射一遍，确保 GSON 注入的 null 被修正为 emptyList
-                    _messages.value = history.map {
-                        it.copy(billPreviews = it.billPreviews ?: emptyList())
-                    }
+                    // 修正 GSON 的 null 问题
+                    history.map { it.copy(billPreviews = it.billPreviews ?: emptyList()) }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    // 解析失败（比如字段类型全变了），建议清空缓存
                     prefs.edit { remove("chat_history") }
-                    loadDefaultWelcome()
+                    getDefaultWelcome() // 见下方的辅助方法
                 }
             } else {
-                loadDefaultWelcome()
+                getDefaultWelcome()
+            }
+
+            // 2. 读取完成后，再赋值给 StateFlow
+            _messages.value = initialList
+
+            // 3. ✨ 核心修复：延迟监听！并且使用 drop(1) 跳过首次的 value 赋值触发
+            _messages.drop(1).collect { msgs ->
+                // ✨ 性能优化：序列化长列表是非常耗时的，必须在 IO 线程执行 (当前协程已经是 Dispatchers.IO)
+                val json = gson.toJson(msgs)
+                prefs.edit { putString("chat_history", json) }
             }
         }
 
-        // ✨ 2. 核心魔法：只要 _messages 发生变化，就自动静默存入本地！
         viewModelScope.launch {
             _messages.collect { msgs ->
                 prefs.edit { putString("chat_history", gson.toJson(msgs)) }
             }
         }
-        // ✨ ViewModel 初始化时，立刻去监听数据库里的分类表
+
         viewModelScope.launch {
             repository.getAllCategories().collect { categories ->
-                // 提取所有的名字，比如 ["餐饮", "交通", "购物", "娱乐", "居家", "工资", "理财"]
                 _availableCategories.value = categories.map { it.name }
             }
         }
     }
+
+    private fun getDefaultWelcome(): List<ChatMessage> {
+        return listOf(
+            ChatMessage(
+                content = "您好，我是 AI 记账助手。您可以对我说：'今天打车花了 35，午饭吃了 20'。",
+                isFromUser = false
+            )
+        )
+    }
+
+
 
     private fun loadDefaultWelcome() {
         _messages.value = listOf(
@@ -128,33 +138,45 @@ class AIViewModel @Inject constructor(
         )
     }
 
-    // =========================================================================
-    // 🧠 引擎 0：意图识别大模型 (Router)
-    // =========================================================================
     private fun getIntentRouterPrompt(): String {
         return """
-        你是一个意图识别引擎。请分析用户的输入，判断其真实意图。
+        你是一个专注的意图识别引擎，运行于一款专业的记账软件中。请分析用户的输入，精准判断其真实意图。
+        
         【分类标准】：
-        0: 闲聊、问答、非记账类的日常对话。
-        1: 记账指令（包含了消费、花钱、收入、买东西等明确或隐晦的财务行为）。
+        0: 闲聊、问答或指令（如：打招呼、问天气、寻求建议、询问历史账单等非“新增记账”行为）。
+        1: 记账指令（任何试图新增收支记录的行为，包含极其简短或隐晦的输入）。
+        
+        【核心判定规则】（极其重要 ⚠️）：
+        用户在记账时习惯使用极简缩写。只要输入符合“名词/品牌名/场景 + 数字”的结构，或者暗示了资金的变动，都必须绝对识别为 1（记账指令）。
+        
+        【示例参考】：
+        - 输入: "kfc30" -> 意图: 1 (解析为肯德基消费30元)
+        - 输入: "兰香子 30" -> 意图: 1 (解析为餐饮消费30元)
+        - 输入: "打车15.5" -> 意图: 1
+        - 输入: "发工资 8000" -> 意图: 1
+        - 输入: "昨天早饭 8" -> 意图: 1
+        - 输入: "我这个月花了多少钱？" -> 意图: 0 (这是在查询，不是新增记账)
+        - 输入: "帮我写一首诗" -> 意图: 0
         
         【输出格式】：
-        只返回纯JSON格式，绝对不要包含 ```json 等markdown标记：
+        只返回纯 JSON 格式，绝对不要包含 ```json 等 markdown 标记，不要返回多余的解释：
         { "intent": 1 }
         """.trimIndent()
     }
 
-    // =========================================================================
-    // 🧠 引擎 1：专属记账大模型 (Accounting Expert)
-    // =========================================================================
+    // 3. ✨ 核心魔法：修改 getAccountingPrompt() 方法，注入用户的专属指令！
     private fun getAccountingPrompt(): String {
         val categoryStr = _availableCategories.value.joinToString(", ")
+        val userRules = _customInstructions.value
+
         return """
         你是一个极其聪明的专业记账提取引擎。今天是 ${getCurrentContextInfo()}。
         
         【分类限制与规则】（极其重要 ⚠️）：
         数据库仅支持以下分类：[$categoryStr, 其他]。
         提取的 "category" 必须严格从上述列表中选择。
+        
+        ${if (userRules.isNotBlank()) "【用户专属自定义规则】（必须严格遵守以下约定）：\n$userRules\n" else ""}
         
         【推理规则】：
         1. 多账单拆分：如果用户一句话包含多笔花销（如“午饭20，打车30”），请必须拆分为多个对象。
@@ -181,14 +203,6 @@ class AIViewModel @Inject constructor(
         """.trimIndent()
     }
 
-    // =========================================================================
-    // 🧠 引擎 2：专属闲聊大模型 (Chat Expert)
-    // =========================================================================
-    private fun getChatPrompt(): String {
-        return "你是一个聪明、幽默且富有亲和力的记账管家。请以朋友的口吻，简短地回复用户的闲聊内容。"
-    }
-
-
     fun sendMessage(text: String) {
         if (text.isBlank()) return
         _messages.value = _messages.value + ChatMessage(content = text, isFromUser = true)
@@ -196,16 +210,12 @@ class AIViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // 步骤 1：调用路由大模型，判断意图
                 val intent = fetchIntentRecognition(text)
-
-                // 步骤 2：拦截器与分发 (你可以在这里完美拓展 VIP 限制！)
                 if (intent == 0) {
                     handleChatIntent(text)
                 } else {
                     handleAccountingIntent(text)
                 }
-
             } catch (e: Exception) {
                 e.printStackTrace()
                 _messages.value = _messages.value + ChatMessage(
@@ -218,7 +228,6 @@ class AIViewModel @Inject constructor(
         }
     }
 
-    // --- 子方法：获取意图 ---
     private suspend fun fetchIntentRecognition(text: String): Int {
         val request = ChatRequest(
             messages = listOf(
@@ -233,16 +242,10 @@ class AIViewModel @Inject constructor(
             JSONObject(jsonStr).optInt("intent", 1)
         } catch (e: Exception) {
             1
-        } // 默认走记账
+        }
     }
 
-
-    // --- 子方法：处理闲聊/问答 ---
     private suspend fun handleChatIntent(text: String) {
-        // 假设从本地或服务器获取的用户等级
-
-
-        // 第一种情况：无会员，直接拦截拒绝
         if (userVipLevel == 0) {
             val rejectMsg = ChatMessage(
                 content = "💡 闲聊与问答功能是会员专属哦，目前我只能帮您提取记账信息呢~",
@@ -252,10 +255,7 @@ class AIViewModel @Inject constructor(
             return
         }
 
-        // 准备发给 API 的消息列表
         val apiMessages = mutableListOf<Message>()
-
-        // 1. 永远需要先塞入系统人设
         apiMessages.add(
             Message(
                 "system", """
@@ -269,24 +269,18 @@ class AIViewModel @Inject constructor(
             )
         )
 
-        // 第三种情况：SVIP 高级会员，携带最近的上下文记忆
         if (userVipLevel == 2) {
-            // 提取最近的 context_length 条聊天记录（控制 Token 成本，别全传）作为记忆
             val recentHistory = _messages.value.takeLast(context_length)
             recentHistory.forEach { msg ->
-                // 注意：只传纯文本对话，不要把复杂的账单 JSON 也传过去扰乱它
                 if (msg.content.isNotBlank()) {
                     val role = if (msg.isFromUser) "user" else "assistant"
                     apiMessages.add(Message(role, msg.content))
                 }
             }
         }
-        // 第二种情况：普通会员 (userVipLevel == 1)，不执行上面那段代码，直接跳到这里。
 
-        // 2. 塞入用户当前说的话
         apiMessages.add(Message("user", text))
 
-        // 3. 发送网络请求
         val request = ChatRequest(messages = apiMessages)
         val response = apiService.getAiCompletion(apiKey, request)
         val jsonStr = response.choices?.firstOrNull()?.message?.content?.replace("```json", "")
@@ -295,13 +289,12 @@ class AIViewModel @Inject constructor(
         val replyText = try {
             JSONObject(jsonStr).optString("reply", "哎呀，我走神了，能再说一遍吗？")
         } catch (e: Exception) {
-            jsonStr // 兜底防线：万一它真的没按 JSON 回复，直接输出原话，防止应用崩溃
+            jsonStr
         }
 
         _messages.value = _messages.value + ChatMessage(content = replyText, isFromUser = false)
     }
 
-    // --- 子方法：处理记账 (提取多账单数组) ---
     private suspend fun handleAccountingIntent(text: String) {
         val request = ChatRequest(
             messages = listOf(
@@ -343,21 +336,22 @@ class AIViewModel @Inject constructor(
         )
     }
 
-
-    // ✨ 安全防线：防止 AI 的“幻觉”破坏数据库结构
     private fun validateCategory(aiCategory: String): String {
         val currentCategories = _availableCategories.value
         return if (currentCategories.contains(aiCategory)) {
             aiCategory
         } else {
-            "其他" // 强制兜底
+            "其他"
         }
     }
 
-    // ⚠️修复点2：补全了用户点击"确认归档"时调用的入库逻辑
+    // ✨ 核心修复：确认归档时，必须带上当前的 BookId
     fun confirmAndSaveLedger(msgId: String, preview: BillPreview) {
         viewModelScope.launch {
             try {
+                // ✨ 1. 挂起获取当前真实的 bookId
+                val activeBookId = userPrefs.currentBookId.first()
+
                 val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val parsedDate = format.parse(preview.date)
 
@@ -377,7 +371,9 @@ class AIViewModel @Inject constructor(
                     System.currentTimeMillis()
                 }
 
+                // ✨ 2. 组装实体类时，必须注入 bookId
                 val newLedger = LedgerEntity(
+                    bookId = activeBookId, // ✨ 让 AI 产生的账单归属于当前账本
                     amount = preview.amount.toDoubleOrNull() ?: 0.0,
                     type = preview.type,
                     categoryName = preview.category,
@@ -389,7 +385,6 @@ class AIViewModel @Inject constructor(
 
                 repository.insertLedger(newLedger)
 
-                // ✨ 修复 2：去多账单数组里找到这笔账单，标记为已保存
                 _messages.value = _messages.value.map { currentMsg ->
                     if (currentMsg.id == msgId) {
                         val updatedBills = currentMsg.billPreviews.map { bill ->
@@ -415,8 +410,6 @@ class AIViewModel @Inject constructor(
         }
     }
 
-
-    // ✨ 修复 3：更新账单也必须精确到具体的 bill ID
     fun updateMessagePreview(msgId: String, updatedPreview: BillPreview) {
         _messages.value = _messages.value.map { msg ->
             if (msg.id == msgId) {
@@ -430,7 +423,6 @@ class AIViewModel @Inject constructor(
         }
     }
 
-    // 获取当前日期
     private fun getCurrentContextInfo(): String {
         return SimpleDateFormat("yyyy-MM-dd EEEE", Locale.CHINESE).format(Date())
     }
@@ -438,6 +430,4 @@ class AIViewModel @Inject constructor(
     private fun getCurrentDate(): String {
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     }
-
-
 }

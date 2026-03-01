@@ -65,7 +65,10 @@ sealed class DetailRoute {
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
+fun DetailScreen(
+    viewModel: DetailViewModel = hiltViewModel(),// ✨ 1. 新增回调参数：用于向外抛出“当前是否处于子页面”的状态
+    onSubPageVisible: (Boolean) -> Unit = {}
+) {
     var isYearView by remember { mutableStateOf(false) }
 
     // --- 状态获取 ---
@@ -76,7 +79,14 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
     val monthlyBudget by viewModel.monthlyBudget.collectAsState()
     val yearlyBudget by viewModel.yearlyBudget.collectAsState()
 
-    val yearlyStats by viewModel.yearlyStats.collectAsState(initial = MonthlyStats("0.0", "0.0", "0.0", "0.0"))
+    val yearlyStats by viewModel.yearlyStats.collectAsState(
+        initial = MonthlyStats(
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0"
+        )
+    )
     val yearlyCategoryPercentages by viewModel.yearlyCategoryPercentages.collectAsState(initial = emptyList())
     val currentYearLedgers by viewModel.currentYearLedgers.collectAsState(initial = emptyList())
     val yearlyMonthlyRecordsMap by viewModel.yearlyMonthlyRecordsMap.collectAsState(initial = emptyMap())
@@ -130,6 +140,13 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
 
     var currentRoute by remember { mutableStateOf<DetailRoute>(DetailRoute.Main) }
 
+
+    // ✨ 2. 新增监听：当 currentRoute 发生变化时，判断是否离开了 Main 主路由
+    // 如果离开了，说明进入了 Category 或 Daily 子页面，向外层发送 true
+    LaunchedEffect(currentRoute) {
+        onSubPageVisible(currentRoute != DetailRoute.Main)
+    }
+
     // ✨ 核心层级包裹：Box 必须包在最外面，保证提示框能悬浮
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -165,8 +182,12 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                                     categories = categoryPercentages,
                                     budget = monthlyBudget,
                                     onMonthClick = { showMonthPicker = true },
-                                    onCategoryClick = { cat, idx -> currentRoute = DetailRoute.Category(cat, idx) },
-                                    onDayClick = { day -> currentRoute = DetailRoute.Daily(day, currentMonth) }
+                                    onCategoryClick = { cat, idx ->
+                                        currentRoute = DetailRoute.Category(cat, idx)
+                                    },
+                                    onDayClick = { day ->
+                                        currentRoute = DetailRoute.Daily(day, currentMonth)
+                                    }
                                 )
                             } else {
                                 // === ☀️ 年视图内容 ===
@@ -177,19 +198,24 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                                     monthlyMap = yearlyMonthlyRecordsMap,
                                     budget = yearlyBudget,
                                     onYearChange = { selectedYear = it },
-                                    onCategoryClick = { cat, idx -> currentRoute = DetailRoute.Category(cat, idx) },
+                                    onCategoryClick = { cat, idx ->
+                                        currentRoute = DetailRoute.Category(cat, idx)
+                                    },
                                     onMonthClick = { clickedMonth ->
                                         // 1. 触发长按震动反馈
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 
                                         // 2. 触发顶部高级悬浮提示
-                                        topToastMessage = "已为您切换至 ${selectedYear}年${clickedMonth}月"
+                                        topToastMessage =
+                                            "已为您切换至 ${selectedYear}年${clickedMonth}月"
                                         toastTrigger++
 
                                         // 3. 计算并后台切换月视图 Pager
-                                        val targetYearMonth = YearMonth.of(selectedYear, clickedMonth)
-                                        val targetPage = (targetYearMonth.year - baseMonth.year) * 12 +
-                                                (targetYearMonth.monthValue - baseMonth.monthValue)
+                                        val targetYearMonth =
+                                            YearMonth.of(selectedYear, clickedMonth)
+                                        val targetPage =
+                                            (targetYearMonth.year - baseMonth.year) * 12 +
+                                                    (targetYearMonth.monthValue - baseMonth.monthValue)
 
                                         scope.launch {
                                             pagerState.scrollToPage(targetPage)
@@ -201,6 +227,7 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                         }
                     }
                 }
+
                 is DetailRoute.Category -> {
                     CategoryDetailView(
                         category = route.category,
@@ -211,6 +238,7 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
                         onDeleteLedger = { viewModel.deleteLedger(it) }
                     )
                 }
+
                 is DetailRoute.Daily -> {
                     DailyDetailView(
                         day = route.day,
@@ -287,7 +315,8 @@ fun MainDetailContent(
                     .padding(horizontal = 16.dp),
                 pageSpacing = 16.dp
             ) { page ->
-                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                val pageOffset =
+                    (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                 val alpha = 1f - Math.abs(pageOffset).coerceIn(0f, 0.6f)
                 val scale = 1f - (Math.abs(pageOffset) * 0.08f)
 
@@ -318,107 +347,6 @@ fun MainDetailContent(
     }
 }
 
-@Composable
-fun DailyDetailView(
-    day: Int,
-    month: YearMonth,
-    allLedgers: List<LedgerEntity>,
-    onBack: () -> Unit,
-    onSaveLedger: (LedgerEntity) -> Unit,
-    onDeleteLedger: (LedgerEntity) -> Unit
-) {
-    val dayLedgers = remember(allLedgers, day, month) {
-        allLedgers.filter { ledger ->
-            val cal = Calendar.getInstance().apply { timeInMillis = ledger.timestamp }
-            cal.get(Calendar.DAY_OF_MONTH) == day &&
-                    cal.get(Calendar.MONTH) + 1 == month.monthValue &&
-                    cal.get(Calendar.YEAR) == month.year
-        }.sortedByDescending { it.timestamp }
-    }
-
-    var selectedLedger by remember { mutableStateOf<LedgerEntity?>(null) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppDesignSystem.colors.appBackground)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowLeft,
-                    contentDescription = "返回",
-                    tint = AppDesignSystem.colors.textPrimary,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            Text(
-                text = "${month.monthValue}月${day}日 账单明细",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppDesignSystem.colors.textPrimary,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-
-        if (dayLedgers.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("这一天没有记账哦 🍃", color = AppDesignSystem.colors.textSecondary)
-            }
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(dayLedgers) { ledger ->
-                    val displayData = remember(ledger) {
-                        val color = when (ledger.categoryName) {
-                            "餐饮" -> CategoryFood
-                            "交通" -> CategoryTransport
-                            "购物" -> CategoryShop
-                            else -> CategoryOther
-                        }
-                        val absVal = String.format(Locale.getDefault(), "%.2f", abs(ledger.amount))
-                        val displayAmount = if (ledger.type == 0) "- ¥$absVal" else "+ ¥$absVal"
-
-                        TransactionData(
-                            title = ledger.note.ifBlank { ledger.categoryName },
-                            icon = ledger.categoryIcon,
-                            amount = displayAmount,
-                            color = color,
-                            originalLedger = ledger
-                        )
-                    }
-
-                    RefinedTransactionItem(
-                        data = displayData,
-                        onClick = { selectedLedger = ledger }
-                    )
-                }
-            }
-        }
-    }
-
-    if (selectedLedger != null) {
-        EditLedgerSheet(
-            initialLedger = selectedLedger!!,
-            onDismiss = { selectedLedger = null },
-            onSave = {
-                onSaveLedger(it)
-                selectedLedger = null
-            },
-            onDelete = {
-                onDeleteLedger(it)
-                selectedLedger = null
-            }
-        )
-    }
-}
 
 // ✨ 高级的胶囊 Segmented Control 切换器
 @Composable
