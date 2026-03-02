@@ -3,6 +3,7 @@ package com.yhx.autoledger.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -31,6 +32,12 @@ class UserPreferencesRepository @Inject constructor(
 
     // AI 自定义记忆指令的 Key
     private val AI_CUSTOM_INSTRUCTIONS_KEY = stringPreferencesKey("ai_custom_instructions")
+
+    // ✨ 新增 Keys
+    private val PRIVACY_LOCK_KEY = booleanPreferencesKey("privacy_lock_enabled")
+    private val REMINDER_TIME_KEY = stringPreferencesKey("reminder_time")
+
+    private val PRIVACY_LOCK_PATTERN_KEY = stringPreferencesKey("privacy_lock_pattern")
 
     // ================== 账本相关 ==================
     // 获取当前账本 ID
@@ -86,5 +93,25 @@ class UserPreferencesRepository @Inject constructor(
         context.dataStore.edit { preferences ->
             preferences[AI_CUSTOM_INSTRUCTIONS_KEY] = instructions
         }
+    }
+
+    // ================== 隐私锁与提醒 ==================
+    val privacyLockEnabled: Flow<Boolean> =
+        context.dataStore.data.map { it[PRIVACY_LOCK_KEY] ?: false }
+
+    val reminderTime: Flow<String> = context.dataStore.data.map { it[REMINDER_TIME_KEY] ?: "" }
+
+    suspend fun updatePrivacyLock(enabled: Boolean) {
+        context.dataStore.edit { it[PRIVACY_LOCK_KEY] = enabled }
+    }
+
+    suspend fun updateReminderTime(time: String) {
+        context.dataStore.edit { it[REMINDER_TIME_KEY] = time }
+    }
+
+    val privacyLockPattern: Flow<String> = context.dataStore.data.map { it[PRIVACY_LOCK_PATTERN_KEY] ?: "" }
+
+    suspend fun updatePrivacyPattern(pattern: String) {
+        context.dataStore.edit { it[PRIVACY_LOCK_PATTERN_KEY] = pattern }
     }
 }

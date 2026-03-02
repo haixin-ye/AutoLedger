@@ -91,4 +91,6 @@ dependencies {
 
     // Google Gson 用于数据序列化
     implementation("com.google.code.gson:gson:2.10.1")
+
+    implementation("androidx.biometric:biometric:1.1.0")
 }

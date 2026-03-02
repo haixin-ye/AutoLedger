@@ -14,7 +14,9 @@ import kotlinx.coroutines.flow.flow // ✨ 补全了 flow 的导包
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
+// 1. 顶部导入 Context
+import android.content.Context
+import com.yhx.autoledger.utils.ReminderHelper // 导入刚才写的工具
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
@@ -41,5 +43,31 @@ class MainViewModel @Inject constructor(
 
     fun switchBook(bookId: Long) {
         viewModelScope.launch { userPreferencesRepository.updateCurrentBookId(bookId) }
+    }
+
+    // ✨ 暴露给 UI 的流
+    val privacyLockEnabled = userPreferencesRepository.privacyLockEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val reminderTime = userPreferencesRepository.reminderTime
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    // ✨ UI 更新操作
+    fun setPrivacyLock(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updatePrivacyLock(enabled) }
+    }
+
+    fun setReminderTime(context: Context, time: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateReminderTime(time)
+            ReminderHelper.scheduleReminder(context, time) // 更新系统闹钟
+        }
+    }
+
+    val privacyLockPattern = userPreferencesRepository.privacyLockPattern
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    fun setPrivacyPattern(pattern: String) {
+        viewModelScope.launch { userPreferencesRepository.updatePrivacyPattern(pattern) }
     }
 }
