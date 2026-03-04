@@ -8,8 +8,10 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -31,34 +33,36 @@ fun SettingsScreen(
     currentTheme: Int,
     currentBookName: String,
     privacyLockEnabled: Boolean,
-    privacyLockPattern: String, // ✨ 新增
+    privacyLockPattern: String,
     reminderTime: String,
+    aiPersonaId: String,
+    allPersonas: List<com.yhx.autoledger.model.AIPersona>, // 注意：检查你的包名是 model 还是 models
     onThemeChange: (Int) -> Unit,
     onNavigateToImportExport: () -> Unit,
     onNavigateToCategoryManage: () -> Unit,
-    onNavigateToBookManage: () -> Unit, // 前往账本管理的导航回调
+    onNavigateToBookManage: () -> Unit,
     onNavigateToAiMemory: () -> Unit,
     onTogglePrivacyLock: (Boolean) -> Unit,
-    onSetPrivacyPattern: (String) -> Unit, // ✨ 新增
-    onSetReminderTime: (String) -> Unit
+    onSetPrivacyPattern: (String) -> Unit,
+    onSetReminderTime: (String) -> Unit,
+    onSetAiPersonaId: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var isLoggedIn by remember { mutableStateOf(true) }
+
+    // ✨ 所有弹窗的状态控制变量统一放在这里（最顶层）
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showPersonaDialog by remember { mutableStateOf(false) } // 控制人设弹窗
+    var showTimePicker by remember { mutableStateOf(false) }
+    var showPatternSetup by remember { mutableStateOf(false) }
 
     var isAutoRecordingEnabled by remember { mutableStateOf(false) }
-    var isPrivacyLockEnabled by remember { mutableStateOf(false) }
 
-    var showTimePicker by remember { mutableStateOf(false) }
-    // ✨ 申请通知权限的 Launcher
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) showTimePicker = true
-            else Toast.makeText(context, "需开启通知权限才能准时提醒您哦", Toast.LENGTH_SHORT)
-                .show()
+            else Toast.makeText(context, "需开启通知权限才能准时提醒您哦", Toast.LENGTH_SHORT).show()
         }
-    // 增加一个状态控制设置密码弹窗
-    var showPatternSetup by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -89,7 +93,6 @@ fun SettingsScreen(
 
         item {
             SettingsGroup(title = "账务与分类") {
-                // ✨ 核心修改：接入前往账本管理的事件
                 SettingClickRow(
                     icon = Icons.Rounded.AccountBalanceWallet,
                     iconTint = AppDesignSystem.colors.brandAccent,
@@ -139,12 +142,17 @@ fun SettingsScreen(
                     modifier = Modifier.padding(start = 56.dp),
                     color = AppDesignSystem.colors.dividerColor
                 )
+
+                // ✨ 修复点 1：删除了这里原本多余的 var showPersonaDialog 声明，直接使用外部的！
+                // 匹配当前的人设对象 (安全调用 firstOrNull 防止列表为空崩溃)
+                val currentPersona = allPersonas.find { it.id == aiPersonaId } ?: allPersonas.firstOrNull()
+
                 SettingClickRow(
                     icon = Icons.Rounded.Face,
                     iconTint = AppDesignSystem.colors.brandAccent,
                     title = "AI 助手人设与语气",
-                    value = "专业管家",
-                    onClick = { /* TODO */ }
+                    value = if (currentPersona != null) "${currentPersona.avatar} ${currentPersona.name}" else "读取中...",
+                    onClick = { showPersonaDialog = true } // 点击触发最外层的变量
                 )
                 HorizontalDivider(
                     modifier = Modifier.padding(start = 56.dp),
@@ -155,7 +163,7 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.categoryShop,
                     title = "AI 专属记忆管理",
                     value = "优化AI模型",
-                    onClick = onNavigateToAiMemory // ✨ 绑定跳转
+                    onClick = onNavigateToAiMemory
                 )
             }
         }
@@ -187,17 +195,15 @@ fun SettingsScreen(
                 SettingSwitchRow(
                     icon = Icons.Rounded.Lock,
                     iconTint = AppDesignSystem.colors.iconBgSecurity,
-                    title = "九宫格隐私锁",
+                    title = "隐私锁",
                     subtitle = if (privacyLockEnabled) "已开启" else "应用退到后台时保护数据",
                     initialChecked = privacyLockEnabled,
                     onCheckedChange = { isChecking ->
                         if (isChecking) {
-                            // 想要开启，弹出设置密码界面
                             showPatternSetup = true
                         } else {
-                            // 关闭直接关
                             onTogglePrivacyLock(false)
-                            onSetPrivacyPattern("") // 清空密码
+                            onSetPrivacyPattern("")
                         }
                     }
                 )
@@ -218,9 +224,8 @@ fun SettingsScreen(
                     icon = Icons.Rounded.NotificationsActive,
                     iconTint = AppDesignSystem.colors.iconBgAlert,
                     title = "记账提醒",
-                    value = if (reminderTime.isEmpty()) "未开启" else "每天 $reminderTime", // ✨ 动态文案
+                    value = if (reminderTime.isEmpty()) "未开启" else "每天 $reminderTime",
                     onClick = {
-                        // Android 13 及以上需动态申请通知权限
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } else {
@@ -267,6 +272,10 @@ fun SettingsScreen(
         }
     }
 
+    // ==============================================
+    // 以下是各种弹窗组件的调用
+    // ==============================================
+
     if (showThemeDialog) {
         ThemeSelectionDialog(
             currentTheme = currentTheme,
@@ -278,6 +287,20 @@ fun SettingsScreen(
         )
     }
 
+    // ✨ 修复点 2：将 AI 人设切换独立抽取为组件调用，逻辑更清晰
+    if (showPersonaDialog) {
+        AIPersonaSelectionDialog(
+            allPersonas = allPersonas,
+            currentPersonaId = aiPersonaId,
+            onDismiss = { showPersonaDialog = false },
+            onPersonaSelect = { selectedId ->
+                onSetAiPersonaId(selectedId)
+                showPersonaDialog = false
+            }
+        )
+    }
+
+    // ... （此处保留原有 showTimePicker 和 showPatternSetup 的实现，为节省空间暂不修改它们，只保持原样）
     if (showTimePicker) {
         var selectedHour by remember { mutableStateOf(if (reminderTime.isNotEmpty()) reminderTime.split(":")[0].toInt() else 20) }
         var selectedMinute by remember { mutableStateOf(if (reminderTime.isNotEmpty()) reminderTime.split(":")[1].toInt() else 0) }
@@ -287,47 +310,12 @@ fun SettingsScreen(
             containerColor = AppDesignSystem.colors.sheetBackground,
             title = { Text("设置提醒时间", fontWeight = FontWeight.Bold, color = AppDesignSystem.colors.textPrimary) },
             text = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // ✨ 这是精髓：绘制一条横跨“时”与“分”的统一高亮底条 (只用品牌色的 10% 透明度)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.8f) // 宽度占 80%
-                            .height(50.dp) // 和 itemHeight 保持绝对一致
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                            .background(AppDesignSystem.colors.brandAccent.copy(alpha = 0.1f))
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        InfiniteWheelPicker(
-                            items = (0..23).toList(),
-                            initialItem = selectedHour,
-                            onItemSelected = { selectedHour = it }
-                        )
-
-                        Text(
-                            text = ":",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppDesignSystem.colors.brandAccent, // 冒号也使用主题强调色
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp)
-                                .offset(y = (-2).dp) // 微调冒号的视觉中心对齐
-                        )
-
-                        InfiniteWheelPicker(
-                            items = (0..59).toList(),
-                            initialItem = selectedMinute,
-                            onItemSelected = { selectedMinute = it }
-                        )
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth(0.8f).height(50.dp).clip(RoundedCornerShape(12.dp)).background(AppDesignSystem.colors.brandAccent.copy(alpha = 0.1f)))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        InfiniteWheelPicker(items = (0..23).toList(), initialItem = selectedHour, onItemSelected = { selectedHour = it })
+                        Text(":", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = AppDesignSystem.colors.brandAccent, modifier = Modifier.padding(horizontal = 16.dp).offset(y = (-2).dp))
+                        InfiniteWheelPicker(items = (0..59).toList(), initialItem = selectedMinute, onItemSelected = { selectedMinute = it })
                     }
                 }
             },
@@ -340,10 +328,7 @@ fun SettingsScreen(
                 }) { Text("保存", color = AppDesignSystem.colors.brandAccent, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    onSetReminderTime("")
-                    showTimePicker = false
-                }) { Text("关闭提醒", color = AppDesignSystem.colors.warningRed) }
+                TextButton(onClick = { onSetReminderTime(""); showTimePicker = false }) { Text("关闭提醒", color = AppDesignSystem.colors.warningRed) }
             }
         )
     }
@@ -356,20 +341,13 @@ fun SettingsScreen(
             title = { Text("设置解锁图案", fontWeight = FontWeight.Bold, color = AppDesignSystem.colors.textPrimary) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = if (setupError) "至少需要连接 4 个点" else "请绘制您的解锁图案",
-                        color = if (setupError) AppDesignSystem.colors.warningRed else AppDesignSystem.colors.textSecondary,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    Text(text = if (setupError) "至少需要连接 4 个点" else "请绘制您的解锁图案", color = if (setupError) AppDesignSystem.colors.warningRed else AppDesignSystem.colors.textSecondary, modifier = Modifier.padding(bottom = 16.dp))
                     PatternLock(
                         isError = setupError,
                         onPatternComplete = { patternList ->
-                            if (patternList.size < 4) {
-                                setupError = true
-                            } else {
-                                // 绘制成功！保存并开启
-                                val patternStr = patternList.joinToString(",")
-                                onSetPrivacyPattern(patternStr)
+                            if (patternList.size < 4) setupError = true
+                            else {
+                                onSetPrivacyPattern(patternList.joinToString(","))
                                 onTogglePrivacyLock(true)
                                 showPatternSetup = false
                                 Toast.makeText(context, "密码设置成功！", Toast.LENGTH_SHORT).show()
@@ -378,11 +356,80 @@ fun SettingsScreen(
                     )
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showPatternSetup = false }) {
-                    Text("取消", color = AppDesignSystem.colors.textSecondary)
-                }
-            }
+            confirmButton = { TextButton(onClick = { showPatternSetup = false }) { Text("取消", color = AppDesignSystem.colors.textSecondary) } }
         )
     }
+}
+
+// ✨ 修复点 3：抽取的独立弹窗组件
+@Composable
+fun AIPersonaSelectionDialog(
+    allPersonas: List<com.yhx.autoledger.model.AIPersona>,
+    currentPersonaId: String,
+    onDismiss: () -> Unit,
+    onPersonaSelect: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = AppDesignSystem.colors.appBackground,
+        title = {
+            Text(
+                text = "选择专属 AI 助手",
+                fontWeight = FontWeight.Bold,
+                color = AppDesignSystem.colors.textPrimary
+            )
+        },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(allPersonas) { persona ->
+                    val isSelected = persona.id == currentPersonaId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (isSelected) AppDesignSystem.colors.brandAccent.copy(alpha = 0.1f)
+                                else AppDesignSystem.colors.cardBackground
+                            )
+                            // ✨ 修复点 4：移除了 bounceClick()，直接使用 clickable，确保点击事件不被吞掉！
+                            .clickable {
+                                onPersonaSelect(persona.id)
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(persona.avatar, fontSize = 32.sp)
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = persona.name,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) AppDesignSystem.colors.brandAccent else AppDesignSystem.colors.textPrimary,
+                                fontSize = 16.sp
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = persona.description,
+                                fontSize = 12.sp,
+                                color = AppDesignSystem.colors.textSecondary,
+                                lineHeight = 16.sp
+                            )
+                        }
+                        if (isSelected) {
+                            Icon(
+                                Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                tint = AppDesignSystem.colors.brandAccent
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭", color = AppDesignSystem.colors.textSecondary)
+            }
+        }
+    )
 }

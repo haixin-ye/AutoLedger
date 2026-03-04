@@ -109,9 +109,23 @@ class UserPreferencesRepository @Inject constructor(
         context.dataStore.edit { it[REMINDER_TIME_KEY] = time }
     }
 
-    val privacyLockPattern: Flow<String> = context.dataStore.data.map { it[PRIVACY_LOCK_PATTERN_KEY] ?: "" }
+    val privacyLockPattern: Flow<String> =
+        context.dataStore.data.map { it[PRIVACY_LOCK_PATTERN_KEY] ?: "" }
 
     suspend fun updatePrivacyPattern(pattern: String) {
         context.dataStore.edit { it[PRIVACY_LOCK_PATTERN_KEY] = pattern }
+
+    }
+
+    private val AI_PERSONA_ID_KEY = stringPreferencesKey("ai_persona_id")
+
+    // 2. 在类中补充读写方法：
+    // 默认返回 "professional_butler" (专业管家)
+    val aiPersonaId: Flow<String> = context.dataStore.data.map {
+        it[AI_PERSONA_ID_KEY] ?: "professional_butler"
+    }
+
+    suspend fun updateAiPersonaId(id: String) {
+        context.dataStore.edit { it[AI_PERSONA_ID_KEY] = id }
     }
 }

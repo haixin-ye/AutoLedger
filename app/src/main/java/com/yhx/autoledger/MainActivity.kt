@@ -113,6 +113,9 @@ class MainActivity : FragmentActivity() { // ✨ 必须是 FragmentActivity 才�
             val privacyLockPattern by mainViewModel.privacyLockPattern.collectAsState() // ✨ 新增获取密码
             val reminderTime by mainViewModel.reminderTime.collectAsState()
             val context = LocalContext.current
+            // ✨ 获取人设状态
+            val aiPersonaId by mainViewModel.aiPersonaId.collectAsState()
+            val allPersonas = mainViewModel.allPersonas
 
             // ✨ 核心生命周期监听：App 切后台即重置验证状态
             var isAuthenticated by rememberSaveable { mutableStateOf(false) }
@@ -224,6 +227,11 @@ class MainActivity : FragmentActivity() { // ✨ 必须是 FragmentActivity 才�
                                                 privacyLockEnabled = privacyLockEnabled,
                                                 privacyLockPattern = privacyLockPattern, // ✨
                                                 reminderTime = reminderTime,
+                                                // ✨ 新增：传入人设参数
+                                                aiPersonaId = aiPersonaId,
+                                                allPersonas = allPersonas,
+                                                onSetAiPersonaId = { mainViewModel.setAiPersonaId(it) },
+
                                                 onTogglePrivacyLock = { mainViewModel.setPrivacyLock(it) },
                                                 onSetPrivacyPattern = { mainViewModel.setPrivacyPattern(it) }, // ✨
                                                 onSetReminderTime = { mainViewModel.setReminderTime(context, it) },
