@@ -1,9 +1,7 @@
 package com.yhx.autoledger.ui.screens
 
 import android.Manifest
-import android.content.Intent
 import android.os.Build
-import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign // ✨ 确保引入了 TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yhx.autoledger.ui.components.*
@@ -36,7 +35,7 @@ fun SettingsScreen(
     privacyLockPattern: String,
     reminderTime: String,
     aiPersonaId: String,
-    allPersonas: List<com.yhx.autoledger.model.AIPersona>, // 注意：检查你的包名是 model 还是 models
+    allPersonas: List<com.yhx.autoledger.model.AIPersona>,
     onThemeChange: (Int) -> Unit,
     onNavigateToImportExport: () -> Unit,
     onNavigateToCategoryManage: () -> Unit,
@@ -50,13 +49,12 @@ fun SettingsScreen(
     val context = LocalContext.current
     var isLoggedIn by remember { mutableStateOf(true) }
 
-    // ✨ 所有弹窗的状态控制变量统一放在这里（最顶层）
+    // 统一管理所有的弹窗状态
     var showThemeDialog by remember { mutableStateOf(false) }
-    var showPersonaDialog by remember { mutableStateOf(false) } // 控制人设弹窗
+    var showPersonaDialog by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPatternSetup by remember { mutableStateOf(false) }
-
-    var isAutoRecordingEnabled by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -111,40 +109,15 @@ fun SettingsScreen(
                     value = "",
                     onClick = onNavigateToCategoryManage
                 )
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 56.dp),
-                    color = AppDesignSystem.colors.dividerColor
-                )
-                SettingClickRow(
-                    icon = Icons.Rounded.CreditCard,
-                    iconTint = AppDesignSystem.colors.categoryTransport,
-                    title = "支付渠道配置",
-                    value = "微信 / 支付宝",
-                    onClick = { /* TODO */ }
-                )
+                // 支付渠道配置已暂时关闭
             }
         }
 
         item {
             SettingsGroup(title = "AI 与自动化") {
-                SettingSwitchRow(
-                    icon = Icons.Rounded.AutoAwesome,
-                    iconTint = AppDesignSystem.colors.iconBgAI,
-                    title = "无障碍自动记账",
-                    subtitle = if (isAutoRecordingEnabled) "正在后台捕捉支付数据" else "需开启系统无障碍权限",
-                    initialChecked = isAutoRecordingEnabled,
-                    onCheckedChange = {
-                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                        isAutoRecordingEnabled = it
-                    }
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 56.dp),
-                    color = AppDesignSystem.colors.dividerColor
-                )
+                // 无障碍自动记账已暂时关闭
 
-                // ✨ 修复点 1：删除了这里原本多余的 var showPersonaDialog 声明，直接使用外部的！
-                // 匹配当前的人设对象 (安全调用 firstOrNull 防止列表为空崩溃)
+                // 匹配当前的人设对象
                 val currentPersona = allPersonas.find { it.id == aiPersonaId } ?: allPersonas.firstOrNull()
 
                 SettingClickRow(
@@ -152,7 +125,7 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.brandAccent,
                     title = "AI 助手人设与语气",
                     value = if (currentPersona != null) "${currentPersona.avatar} ${currentPersona.name}" else "读取中...",
-                    onClick = { showPersonaDialog = true } // 点击触发最外层的变量
+                    onClick = { showPersonaDialog = true }
                 )
                 HorizontalDivider(
                     modifier = Modifier.padding(start = 56.dp),
@@ -242,7 +215,7 @@ fun SettingsScreen(
                     iconTint = AppDesignSystem.colors.textSecondary,
                     title = "关于 AutoLedger",
                     value = "v1.0.0",
-                    onClick = { /* TODO */ }
+                    onClick = { showAboutDialog = true }
                 )
             }
         }
@@ -273,7 +246,7 @@ fun SettingsScreen(
     }
 
     // ==============================================
-    // 以下是各种弹窗组件的调用
+    // 弹窗组件调用区域
     // ==============================================
 
     if (showThemeDialog) {
@@ -287,7 +260,6 @@ fun SettingsScreen(
         )
     }
 
-    // ✨ 修复点 2：将 AI 人设切换独立抽取为组件调用，逻辑更清晰
     if (showPersonaDialog) {
         AIPersonaSelectionDialog(
             allPersonas = allPersonas,
@@ -300,7 +272,13 @@ fun SettingsScreen(
         )
     }
 
-    // ... （此处保留原有 showTimePicker 和 showPatternSetup 的实现，为节省空间暂不修改它们，只保持原样）
+    if (showAboutDialog) {
+        AboutAppDialog(
+            version = "v1.0.0",
+            onDismiss = { showAboutDialog = false }
+        )
+    }
+
     if (showTimePicker) {
         var selectedHour by remember { mutableStateOf(if (reminderTime.isNotEmpty()) reminderTime.split(":")[0].toInt() else 20) }
         var selectedMinute by remember { mutableStateOf(if (reminderTime.isNotEmpty()) reminderTime.split(":")[1].toInt() else 0) }
@@ -361,7 +339,10 @@ fun SettingsScreen(
     }
 }
 
-// ✨ 修复点 3：抽取的独立弹窗组件
+// ==============================================
+// 独立抽取的弹窗组件
+// ==============================================
+
 @Composable
 fun AIPersonaSelectionDialog(
     allPersonas: List<com.yhx.autoledger.model.AIPersona>,
@@ -391,7 +372,6 @@ fun AIPersonaSelectionDialog(
                                 if (isSelected) AppDesignSystem.colors.brandAccent.copy(alpha = 0.1f)
                                 else AppDesignSystem.colors.cardBackground
                             )
-                            // ✨ 修复点 4：移除了 bounceClick()，直接使用 clickable，确保点击事件不被吞掉！
                             .clickable {
                                 onPersonaSelect(persona.id)
                             }
@@ -429,6 +409,85 @@ fun AIPersonaSelectionDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("关闭", color = AppDesignSystem.colors.textSecondary)
+            }
+        }
+    )
+}
+
+// ✨ 这里就是补充的 AboutAppDialog 弹窗组件定义
+@Composable
+fun AboutAppDialog(
+    version: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = AppDesignSystem.colors.appBackground,
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(AppDesignSystem.colors.brandAccent.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AccountBalanceWallet,
+                        contentDescription = "App Logo",
+                        modifier = Modifier.size(40.dp),
+                        tint = AppDesignSystem.colors.brandAccent
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "AutoLedger",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    color = AppDesignSystem.colors.textPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = version,
+                    fontSize = 14.sp,
+                    color = AppDesignSystem.colors.textSecondary
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "一款基于 AI 驱动的智能记账应用。\n让财务管理变得前所未有的简单与贴心。",
+                    fontSize = 14.sp,
+                    color = AppDesignSystem.colors.textPrimary,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Text(
+                    text = "Copyright © 2026 yhx.\nAll Rights Reserved.",
+                    fontSize = 12.sp,
+                    color = AppDesignSystem.colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 16.sp
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "确定",
+                    color = AppDesignSystem.colors.brandAccent,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
             }
         }
     )
