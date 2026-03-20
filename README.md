@@ -45,8 +45,8 @@
 ### 💡 4. 系统设置 (Settings)
 **系统设置** 则包含了AI性格管理，AI记忆管理，多账本管理、自定义收支分类、本地数据导入/导出、手势密码锁等基础设置。
 
-<br>
-<img src="screenshots/settings.jpg" width="280" style="border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+<br><img src="screenshots/setting.jpg" width="280" style="border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-right: 16px;" />
+
 
 ---
 
