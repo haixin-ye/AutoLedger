@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class LedgerEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val bookId: Long = 1L,
 
     val amount: Double,       // 交易金额
     val type: Int,            // 收支类型：0代表支出，1代表收入 (虽然分类里有，但流水表冗余一份方便快速统计)

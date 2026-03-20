@@ -25,6 +25,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteOutline
@@ -40,6 +41,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,13 +52,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yhx.autoledger.ui.theme.AccentBlue
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.yhx.autoledger.data.entity.CategoryEntity
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
+import com.yhx.autoledger.viewmodel.CategoryManageViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalView
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -69,48 +86,59 @@ fun BaseTransactionSheet(
     initialTimestamp: Long? = null,
     onDismiss: () -> Unit,
     onDelete: (() -> Unit)? = null,
-    onSave: (type: Int, category: String, icon: String, amount: Double, remark: String, timestamp: Long) -> Unit
+    onSave: (type: Int, category: String, icon: String, amount: Double, remark: String, timestamp: Long) -> Unit,
+    categoryViewModel: CategoryManageViewModel = hiltViewModel()
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val coroutineScope = rememberCoroutineScope() // 用于处理点击 Tab 时的滚动动画
+    val coroutineScope = rememberCoroutineScope()
 
-    val expenseCategories = listOf(
-        "餐饮" to "🍱", "交通" to "🚗", "购物" to "🛒",
-        "娱乐" to "🎮", "居住" to "🏠", "其他" to "⚙️"
-    )
-    val incomeCategories = listOf(
-        "工资" to "💰", "理财" to "📈", "兼职" to "💼",
-        "红包" to "🧧", "报销" to "🧾", "其他" to "💵"
-    )
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
-    // --- 状态管理 ---
-    // 使用 PagerState 替代原有的 transactionType
+    // 1. 动态加载数据库中的真实分类流
+    val expenseList by categoryViewModel.expenseCategories.collectAsState(initial = emptyList())
+    val incomeList by categoryViewModel.incomeCategories.collectAsState(initial = emptyList())
+
     val pagerState = rememberPagerState(initialPage = initialType) { 2 }
     val currentType = pagerState.currentPage
 
-    // 将支出和收入的选中状态分离，避免滑动切换时数据相互覆盖或丢失
-    var selectedExpenseCategory by remember {
-        mutableStateOf(if (initialType == 0 && initialCategory != null) initialCategory else expenseCategories[0].first)
-    }
-    var selectedIncomeCategory by remember {
-        mutableStateOf(if (initialType == 1 && initialCategory != null) initialCategory else incomeCategories[0].first)
+    // 获取当前页面(支出/收入)对应的分类列表
+    val currentCategories = if (currentType == 0) expenseList else incomeList
+
+    // 2. 状态管理改为基于 CategoryEntity 对象，抛弃原有的硬编码变量
+    var selectedCategoryEntity by remember { mutableStateOf<CategoryEntity?>(null) }
+
+    // 当列表数据加载完成或切换 Tab 时，自动选中默认项（用于回显或默认选中第一项）
+    LaunchedEffect(currentCategories, currentType) {
+        if (currentCategories.isNotEmpty()) {
+            selectedCategoryEntity =
+                currentCategories.find { it.name == initialCategory } ?: currentCategories.first()
+        }
     }
 
     var amountText by remember { mutableStateOf(initialAmount) }
     var remarkText by remember { mutableStateOf(initialRemark) }
-    var selectedTimestamp by remember { mutableLongStateOf(initialTimestamp ?: System.currentTimeMillis()) }
+    var selectedTimestamp by remember {
+        mutableLongStateOf(
+            initialTimestamp ?: System.currentTimeMillis()
+        )
+    }
 
-    // 全局动画颜色（主要用于外部不滑动的 Save 按钮）
+    // ✨ 提取主题相关的核心动画颜色
+    val targetAnimColor =
+        if (currentType == 0) AppDesignSystem.colors.brandAccent else AppDesignSystem.colors.incomeColor
     val animatedGlobalSymbolColor by animateColorAsState(
-        targetValue = if (currentType == 0) AccentBlue else Color(0xFF4CAF50),
+        targetValue = targetAnimColor,
         label = "global_color_anim"
     )
 
-    // --- UI 渲染 ---
+
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFFF7F9FC),
+        // ✨ 映射弹窗背景色
+        containerColor = AppDesignSystem.colors.sheetBackground,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
     ) {
         Column(
@@ -119,10 +147,15 @@ fun BaseTransactionSheet(
                 .padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 顶部栏
+            // 顶部栏 (编辑模式)
             if (isEditMode) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("修改账单", fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        "修改账单",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = AppDesignSystem.colors.textPrimary
+                    )
                     if (onDelete != null) {
                         IconButton(
                             onClick = {
@@ -131,64 +164,86 @@ fun BaseTransactionSheet(
                             },
                             modifier = Modifier.align(Alignment.CenterEnd)
                         ) {
-                            Icon(Icons.Rounded.DeleteOutline, contentDescription = "删除", tint = Color.Red)
+                            Icon(
+                                Icons.Rounded.DeleteOutline,
+                                contentDescription = "删除",
+                                tint = AppDesignSystem.colors.warningRed
+                            )
                         }
                     }
                 }
                 Spacer(Modifier.height(16.dp))
             }
 
-            // 收支切换器 (与 Pager 状态绑定)
+            // 收支切换器
             Row(
                 modifier = Modifier
                     .width(200.dp)
-                    .background(Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                    .background(
+                        AppDesignSystem.colors.sheetTabBackground,
+                        RoundedCornerShape(16.dp)
+                    )
                     .padding(4.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .background(if (currentType == 0) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
+                        .background(
+                            if (currentType == 0) AppDesignSystem.colors.sheetTabSelectedBg else Color.Transparent,
+                            RoundedCornerShape(12.dp)
+                        )
                         .clickable { coroutineScope.launch { pagerState.animateScrollToPage(0) } }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("支出", fontWeight = if (currentType == 0) FontWeight.Bold else FontWeight.Normal, color = if (currentType == 0) Color.Black else Color.Gray)
+                    Text(
+                        "支出",
+                        fontWeight = if (currentType == 0) FontWeight.Bold else FontWeight.Normal,
+                        color = if (currentType == 0) AppDesignSystem.colors.sheetTabSelectedText else AppDesignSystem.colors.sheetTabUnselectedText
+                    )
                 }
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .background(if (currentType == 1) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
+                        .background(
+                            if (currentType == 1) AppDesignSystem.colors.sheetTabSelectedBg else Color.Transparent,
+                            RoundedCornerShape(12.dp)
+                        )
                         .clickable { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("收入", fontWeight = if (currentType == 1) FontWeight.Bold else FontWeight.Normal, color = if (currentType == 1) Color.Black else Color.Gray)
+                    Text(
+                        "收入",
+                        fontWeight = if (currentType == 1) FontWeight.Bold else FontWeight.Normal,
+                        color = if (currentType == 1) AppDesignSystem.colors.sheetTabSelectedText else AppDesignSystem.colors.sheetTabUnselectedText
+                    )
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // 💡 核心滑动区域
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth()
             ) { page ->
                 val isExpense = page == 0
-                val pageSymbolColor = if (isExpense) AccentBlue else Color(0xFF4CAF50)
-                val pageCategories = if (isExpense) expenseCategories else incomeCategories
-                val pageSelectedCategory = if (isExpense) selectedExpenseCategory else selectedIncomeCategory
+                val pageSymbolColor =
+                    if (isExpense) AppDesignSystem.colors.brandAccent else AppDesignSystem.colors.incomeColor
 
-                // 将共用的表单控件放在 Pager 内，滑动时体验更沉浸
                 Column(modifier = Modifier.fillMaxWidth()) {
                     // 金额输入区
                     Surface(
-                        color = Color.White,
+                        color = AppDesignSystem.colors.sheetInputBackground,
                         shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.fillMaxWidth().height(80.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -199,12 +254,53 @@ fun BaseTransactionSheet(
                             )
                             Spacer(Modifier.width(12.dp))
                             BasicTextField(
-                                value = amountText, onValueChange = { if (it.length <= 8) amountText = it },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                textStyle = TextStyle(fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color.Black),
-                                modifier = Modifier.weight(1f),
+                                value = amountText,
+                                onValueChange = { newValue ->
+                                    // 1. 如果检测到换行符，说明是通过输入流传来的回车，直接收起键盘
+                                    if (newValue.contains("\n")) {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    } else {
+                                        // 2. 正常过滤和限制长度
+                                        val cleanText = newValue.replace("\n", "")
+                                        if (cleanText.length <= 8) {
+                                            amountText = cleanText
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .onKeyEvent { keyEvent ->
+                                        // ✨ 核心修复：必须同时判断按键是 Enter 且 动作是 KeyUp (抬起)
+                                        if ((keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && keyEvent.type == KeyEventType.KeyUp) {
+                                            keyboardController?.hide()
+                                            focusManager.clearFocus()
+                                            return@onKeyEvent true
+                                        }
+                                        false
+                                    },
+                                textStyle = TextStyle(
+                                    fontSize = 36.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = AppDesignSystem.colors.textPrimary
+                                ),
                                 decorationBox = { inner ->
-                                    if (amountText.isEmpty()) Text("0.00", fontSize = 36.sp, color = Color.LightGray) else inner()
+                                    if (amountText.isEmpty()) Text(
+                                        "0.00",
+                                        fontSize = 36.sp,
+                                        color = AppDesignSystem.colors.textTertiary
+                                    ) else inner()
                                 }
                             )
                         }
@@ -214,12 +310,14 @@ fun BaseTransactionSheet(
                     // 日期选择组件
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
                     ) {
                         Text(
                             if (isEditMode) "修改日期：" else "交易日期：",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = AppDesignSystem.colors.textSecondary
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         DateSelectorButton(
@@ -230,38 +328,56 @@ fun BaseTransactionSheet(
 
                     // 备注输入区
                     Surface(
-                        color = Color.White,
+                        color = AppDesignSystem.colors.sheetInputBackground,
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 20.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Rounded.EditNote, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(24.dp))
+                            Icon(
+                                Icons.Rounded.EditNote,
+                                contentDescription = null,
+                                tint = AppDesignSystem.colors.textTertiary,
+                                modifier = Modifier.size(24.dp)
+                            )
                             Spacer(Modifier.width(12.dp))
                             BasicTextField(
                                 value = remarkText, onValueChange = { remarkText = it },
-                                textStyle = TextStyle(fontSize = 15.sp, color = Color.Black),
+                                textStyle = TextStyle(
+                                    fontSize = 15.sp,
+                                    color = AppDesignSystem.colors.textPrimary
+                                ),
                                 modifier = Modifier.weight(1f), singleLine = true,
                                 decorationBox = { inner ->
-                                    if (remarkText.isEmpty()) Text("添加备注", fontSize = 15.sp, color = Color.LightGray) else inner()
+                                    if (remarkText.isEmpty()) Text(
+                                        "添加备注",
+                                        fontSize = 15.sp,
+                                        color = AppDesignSystem.colors.textTertiary
+                                    ) else inner()
                                 }
                             )
                         }
                     }
                     Spacer(Modifier.height(24.dp))
 
-                    // 分类选择区
+                    // ✨ 分类选择区 (全面挂靠数据库流)
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(4),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(pageCategories) { (name, stdIcon) ->
-                            val isSelected = pageSelectedCategory == name
-                            val displayIcon = if (isSelected && pageSelectedCategory == initialCategory && initialIcon != null) initialIcon else stdIcon
+                        items(currentCategories) { category ->
+                            // 判断当前遍历的分类是否被选中
+                            val isSelected = selectedCategoryEntity?.id == category.id
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -269,23 +385,29 @@ fun BaseTransactionSheet(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
                                 ) {
-                                    if (isExpense) selectedExpenseCategory = name else selectedIncomeCategory = name
+                                    selectedCategoryEntity = category
                                 }
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = if (isSelected) pageSymbolColor else Color.White,
+                                    // ✨ 修复颜色变量错误，统一使用 AppDesignSystem
+                                    color = if (isSelected) pageSymbolColor else AppDesignSystem.colors.sheetCategoryBgUnselected,
                                     modifier = Modifier.size(52.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(displayIcon, fontSize = 24.sp)
+                                        // ✨ 关键点：使用 CategoryIcon 来智能渲染 Emoji 或 图片资源
+                                        CategoryIcon(
+                                            iconName = category.iconName,
+                                            modifier = Modifier.size(26.dp),
+                                            tint = if (isSelected) Color.White else AppDesignSystem.colors.textPrimary
+                                        )
                                     }
                                 }
-                                Spacer(Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    name,
+                                    text = category.name,
                                     fontSize = 12.sp,
-                                    color = if (isSelected) pageSymbolColor else Color.Gray,
+                                    color = if (isSelected) pageSymbolColor else AppDesignSystem.colors.textSecondary,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
@@ -295,35 +417,40 @@ fun BaseTransactionSheet(
             }
             Spacer(Modifier.height(24.dp))
 
-            // 保存按钮放在 Pager 外部固定不动，颜色随 Pager 状态渐变
+            // ✨ 保存逻辑重构
             Button(
                 onClick = {
                     if (amountText.isNotBlank()) {
                         val parsedAmount = amountText.toDoubleOrNull() ?: 0.0
 
-                        // 动态获取当前激活状态的分类数据
-                        val finalCategory = if (currentType == 0) selectedExpenseCategory else selectedIncomeCategory
-                        val finalCategoriesList = if (currentType == 0) expenseCategories else incomeCategories
-                        val finalRemark = if (remarkText.isNotBlank()) remarkText else finalCategory
+                        // 从目前选中的 Entity 中取出数据，抛弃旧的映射表
+                        selectedCategoryEntity?.let { entity ->
+                            val finalRemark =
+                                if (remarkText.isNotBlank()) remarkText else entity.name
 
-                        val finalIcon = if (finalCategory == initialCategory && initialIcon != null) {
-                            initialIcon
-                        } else {
-                            finalCategoriesList.find { it.first == finalCategory }?.second ?: "⚙️"
+                            onSave(
+                                currentType,
+                                entity.name,
+                                entity.iconName, // 将真实的图标标识符抛出
+                                parsedAmount,
+                                finalRemark,
+                                selectedTimestamp
+                            )
+                            onDismiss()
                         }
-
-                        onSave(currentType, finalCategory, finalIcon, parsedAmount, finalRemark, selectedTimestamp)
-                        onDismiss()
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = animatedGlobalSymbolColor),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Text(
                     if (isEditMode) "保存修改" else "保存一笔",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppDesignSystem.colors.textOnAccent
                 )
             }
             Spacer(Modifier.height(32.dp))

@@ -1,79 +1,102 @@
 package com.yhx.autoledger.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Celebration
+import androidx.compose.material.icons.rounded.KeyboardArrowLeft
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.yhx.autoledger.data.entity.LedgerEntity
 import com.yhx.autoledger.models.CategoryPercentage
 import com.yhx.autoledger.models.MonthlyStats
-import com.yhx.autoledger.ui.components.CalendarGrid
-import com.yhx.autoledger.ui.components.CategoryDetailView
-import com.yhx.autoledger.ui.components.DailyTrendChart
-import com.yhx.autoledger.ui.components.DataOverviewSection
-import com.yhx.autoledger.ui.components.DetailTopBar
-import com.yhx.autoledger.ui.components.PremiumBlockCard
-import com.yhx.autoledger.ui.components.PremiumDonutChart
-import com.yhx.autoledger.ui.components.YearMonthPickerDialog
-import com.yhx.autoledger.ui.components.bounceClick
-import com.yhx.autoledger.ui.components.getPremiumBrush
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.components.*
+import com.yhx.autoledger.ui.theme.AppDesignSystem
+import com.yhx.autoledger.ui.theme.CategoryFood
+import com.yhx.autoledger.ui.theme.CategoryOther
+import com.yhx.autoledger.ui.theme.CategoryShop
+import com.yhx.autoledger.ui.theme.CategoryTransport
 import com.yhx.autoledger.viewmodel.DailyRecord
 import com.yhx.autoledger.viewmodel.DetailViewModel
+import com.yhx.autoledger.viewmodel.MonthlyRecord
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.YearMonth
+import java.util.Calendar
+import java.util.Locale
+import kotlin.math.abs
 
-// 在文件顶部定义高级色板
-
+// 路由状态管理
+sealed class DetailRoute {
+    object Main : DetailRoute()
+    data class Category(val category: CategoryPercentage, val index: Int) : DetailRoute()
+    data class Daily(val day: Int, val month: YearMonth) : DetailRoute()
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
+fun DetailScreen(
+    viewModel: DetailViewModel = hiltViewModel(),// ✨ 1. 新增回调参数：用于向外抛出“当前是否处于子页面”的状态
+    onSubPageVisible: (Boolean) -> Unit = {}
+) {
+    var isYearView by remember { mutableStateOf(false) }
+
+    // --- 状态获取 ---
     val monthlyStats by viewModel.monthlyStats.collectAsState()
     val dailyRecordsMap by viewModel.dailyRecordsMap.collectAsState()
     val categoryPercentages by viewModel.categoryPercentages.collectAsState()
     val currentMonthLedgers by viewModel.currentMonthLedgers.collectAsState()
+    val monthlyBudget by viewModel.monthlyBudget.collectAsState()
+    val yearlyBudget by viewModel.yearlyBudget.collectAsState()
+
+    val yearlyStats by viewModel.yearlyStats.collectAsState(
+        initial = MonthlyStats(
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0"
+        )
+    )
+    val yearlyCategoryPercentages by viewModel.yearlyCategoryPercentages.collectAsState(initial = emptyList())
+    val currentYearLedgers by viewModel.currentYearLedgers.collectAsState(initial = emptyList())
+    val yearlyMonthlyRecordsMap by viewModel.yearlyMonthlyRecordsMap.collectAsState(initial = emptyMap())
 
     val baseMonth = YearMonth.of(2000, 1)
     val today = YearMonth.now()
     val initialPage = (today.year - baseMonth.year) * 12 + (today.monthValue - baseMonth.monthValue)
     val pagerState = rememberPagerState(initialPage = initialPage) { 2400 }
 
+    var selectedYear by remember { mutableStateOf(today.year) }
     val scope = rememberCoroutineScope()
     var showMonthPicker by remember { mutableStateOf(false) }
 
@@ -81,90 +104,210 @@ fun DetailScreen(viewModel: DetailViewModel = hiltViewModel()) {
         baseMonth.plusMonths(pagerState.currentPage.toLong())
     }
 
+    // ✨ 悬浮提示框状态
+    var topToastMessage by remember { mutableStateOf("") }
+    var toastTrigger by remember { mutableIntStateOf(0) }
 
-    // ✨ 真正的日期选择弹窗
-    if (showMonthPicker) {
-        YearMonthPickerDialog(
-            initialMonth = currentMonth, // 打开时默认选中当前页面显示的月份
-            onConfirm = { selectedYearMonth ->
-                // 计算选中的年月对应 Pager 的哪一页
-                val targetPage = (selectedYearMonth.year - baseMonth.year) * 12 +
-                        (selectedYearMonth.monthValue - baseMonth.monthValue)
-
-                // 平滑滑动过去
-                scope.launch {
-                    pagerState.animateScrollToPage(targetPage)
-                }
-                showMonthPicker = false // 关闭弹窗
-            },
-            onDismiss = {
-                showMonthPicker = false // 取消关闭弹窗
-            }
-        )
+    // 监听触发器，2秒后自动隐藏提示
+    LaunchedEffect(toastTrigger) {
+        if (topToastMessage.isNotEmpty()) {
+            delay(2000)
+            topToastMessage = ""
+        }
     }
 
-
+    if (showMonthPicker) {
+        YearMonthPickerDialog(
+            initialMonth = currentMonth,
+            onConfirm = { selectedYearMonth ->
+                val targetPage = (selectedYearMonth.year - baseMonth.year) * 12 +
+                        (selectedYearMonth.monthValue - baseMonth.monthValue)
+                scope.launch { pagerState.animateScrollToPage(targetPage) }
+                showMonthPicker = false
+            },
+            onDismiss = { showMonthPicker = false }
+        )
+    }
 
     LaunchedEffect(pagerState.currentPage) {
         val newOffset = pagerState.currentPage - initialPage
         viewModel.monthOffset.value = newOffset
     }
 
-    var selectedCategoryInfo by remember { mutableStateOf<Pair<CategoryPercentage, Int>?>(null) }
+    LaunchedEffect(selectedYear) {
+        viewModel.setYear(selectedYear)
+    }
+
+    var currentRoute by remember { mutableStateOf<DetailRoute>(DetailRoute.Main) }
 
 
+    // ✨ 2. 新增监听：当 currentRoute 发生变化时，判断是否离开了 Main 主路由
+    // 如果离开了，说明进入了 Category 或 Daily 子页面，向外层发送 true
+    LaunchedEffect(currentRoute) {
+        onSubPageVisible(currentRoute != DetailRoute.Main)
+    }
 
-    AnimatedContent(targetState = selectedCategoryInfo, label = "screen_transition") { info ->
-        if (info == null) {
-            MainDetailContent(
-                currentMonth,
-                pagerState,
-                monthlyStats,
-                dailyRecordsMap,
-                categoryPercentages,
-                onMonthClick = { showMonthPicker = true }, // 传入点击事件
-                onCategoryClick = { cat, idx -> selectedCategoryInfo = cat to idx }
-            )
-        } else {
-            CategoryDetailView(
-                category = info.first,
-                categoryIndex = info.second, // 或者您之前传的 themeColor，保持一致即可
-                allLedgers = currentMonthLedgers,
-                onBack = { selectedCategoryInfo = null },
-                // ✨ 补充传入保存和删除的回调
-                onSaveLedger = { updatedLedger -> viewModel.updateLedger(updatedLedger) },
-                onDeleteLedger = { deletedLedger -> viewModel.deleteLedger(deletedLedger) }
-            )
+    // ✨ 核心层级包裹：Box 必须包在最外面，保证提示框能悬浮
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // 主体页面内容
+        AnimatedContent(targetState = currentRoute, label = "screen_transition") { route ->
+            when (route) {
+                is DetailRoute.Main -> {
+                    val haptic = LocalHapticFeedback.current
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(AppDesignSystem.colors.appBackground)
+                    ) {
+                        ViewToggleSegment(
+                            isYearView = isYearView,
+                            onToggle = { isYearView = it }
+                        )
+
+                        // ✨ 丝滑的年月切换过渡动画
+                        Crossfade(
+                            targetState = isYearView,
+                            animationSpec = androidx.compose.animation.core.tween(400),
+                            label = "view_mode_transition"
+                        ) { targetIsYearView ->
+                            if (!targetIsYearView) {
+                                // === 🌙 月视图内容 ===
+                                MainDetailContent(
+                                    currentMonth = currentMonth,
+                                    pagerState = pagerState,
+                                    stats = monthlyStats,
+                                    dailyMap = dailyRecordsMap,
+                                    categories = categoryPercentages,
+                                    budget = monthlyBudget,
+                                    onMonthClick = { showMonthPicker = true },
+                                    onCategoryClick = { cat, idx ->
+                                        currentRoute = DetailRoute.Category(cat, idx)
+                                    },
+                                    onDayClick = { day ->
+                                        currentRoute = DetailRoute.Daily(day, currentMonth)
+                                    }
+                                )
+                            } else {
+                                // === ☀️ 年视图内容 ===
+                                YearDetailContent(
+                                    year = selectedYear,
+                                    stats = yearlyStats,
+                                    categories = yearlyCategoryPercentages,
+                                    monthlyMap = yearlyMonthlyRecordsMap,
+                                    budget = yearlyBudget,
+                                    onYearChange = { selectedYear = it },
+                                    onCategoryClick = { cat, idx ->
+                                        currentRoute = DetailRoute.Category(cat, idx)
+                                    },
+                                    onMonthClick = { clickedMonth ->
+                                        // 1. 触发长按震动反馈
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
+                                        // 2. 触发顶部高级悬浮提示
+                                        topToastMessage =
+                                            "已为您切换至 ${selectedYear}年${clickedMonth}月"
+                                        toastTrigger++
+
+                                        // 3. 计算并后台切换月视图 Pager
+                                        val targetYearMonth =
+                                            YearMonth.of(selectedYear, clickedMonth)
+                                        val targetPage =
+                                            (targetYearMonth.year - baseMonth.year) * 12 +
+                                                    (targetYearMonth.monthValue - baseMonth.monthValue)
+
+                                        scope.launch {
+                                            pagerState.scrollToPage(targetPage)
+                                            isYearView = false // 切回月视图
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                is DetailRoute.Category -> {
+                    CategoryDetailView(
+                        category = route.category,
+                        categoryIndex = route.index,
+                        allLedgers = if (isYearView) currentYearLedgers else currentMonthLedgers,
+                        onBack = { currentRoute = DetailRoute.Main },
+                        onSaveLedger = { viewModel.updateLedger(it) },
+                        onDeleteLedger = { viewModel.deleteLedger(it) }
+                    )
+                }
+
+                is DetailRoute.Daily -> {
+                    DailyDetailView(
+                        day = route.day,
+                        month = route.month,
+                        allLedgers = currentMonthLedgers,
+                        onBack = { currentRoute = DetailRoute.Main },
+                        onSaveLedger = { viewModel.updateLedger(it) },
+                        onDeleteLedger = { viewModel.deleteLedger(it) }
+                    )
+                }
+            }
+        }
+
+        // ✨ 这个组件必须在 AnimatedContent 下面！这样它才会盖在所有内容上面
+        AnimatedVisibility(
+            visible = topToastMessage.isNotEmpty(),
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 72.dp) // 避开刘海屏和状态栏
+                .padding(horizontal = 24.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = AppDesignSystem.colors.cardBackground,
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Celebration,
+                        contentDescription = null,
+                        tint = AppDesignSystem.colors.brandAccent,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = topToastMessage,
+                        color = AppDesignSystem.colors.textPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
 
+// ======================= 下方的组件均保持不变 =======================
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainDetailContent(
-    month: YearMonth,
+    currentMonth: YearMonth,
     pagerState: androidx.compose.foundation.pager.PagerState,
     stats: MonthlyStats,
     dailyMap: Map<Int, DailyRecord>,
     categories: List<CategoryPercentage>,
+    budget: Double,
     onMonthClick: () -> Unit,
     onCategoryClick: (CategoryPercentage, Int) -> Unit,
-    viewModel: DetailViewModel = hiltViewModel() // 注入 viewModel 拿到预算
+    onDayClick: (Int) -> Unit
 ) {
-    // ✨ 观察真实预算
-    val budget by viewModel.monthlyBudget.collectAsState()
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            // ❌ 修改前：.background(Color(0xFFF7F9FC))
-            .background(AppTheme.colors.appBackground)
-    ) {
-        // ✨ 需求 1：修改后的 TopBar
-        item { DetailTopBar(month, onMonthClick) }
-
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item { DetailTopBar(currentMonth, onMonthClick) }
         item {
-            // ✨ 需求 3：增强滑动体验
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -172,54 +315,28 @@ fun MainDetailContent(
                     .padding(horizontal = 16.dp),
                 pageSpacing = 16.dp
             ) { page ->
-                // 计算当前页面的偏移量 (0.0 到 1.0)
                 val pageOffset =
                     (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-
-                // 根据偏移量计算缩放和透明度
                 val alpha = 1f - Math.abs(pageOffset).coerceIn(0f, 0.6f)
                 val scale = 1f - (Math.abs(pageOffset) * 0.08f)
 
                 Box(modifier = Modifier.graphicsLayer {
-                    this.alpha = alpha
-                    this.scaleX = scale
-                    this.scaleY = scale
+                    this.alpha = alpha; this.scaleX = scale; this.scaleY = scale
                 }) {
-                    val pageMonth = YearMonth.of(2000, 1).plusMonths(page.toLong())
-                    CalendarGrid(pageMonth, dailyMap)
+                    CalendarGrid(
+                        month = YearMonth.of(2000, 1).plusMonths(page.toLong()),
+                        dailyMap = dailyMap,
+                        onDayClick = onDayClick
+                    )
                 }
             }
         }
+        item { PremiumBlockCard { DataOverviewSection(stats = stats, budget = budget) } }
+        item { PremiumBlockCard { DailyTrendChart(currentMonth, dailyMap, budget) } }
+        item { SectionTitle("账单明细") }
 
-        // --- 模块 1：数据总览模块 ---
-        item {
-            PremiumBlockCard {
-                // ✨ 传入 stats 和 观察到的 realBudget
-                DataOverviewSection(stats = stats, budget = budget)
-            }
-        }
-
-        // --- 模块 2：消费趋势模块 ---
-        item {
-            // 给两个模块之间增加一个 Spacer，或者利用 PremiumBlockCard 原有的 padding
-            // 确保这里调用了趋势图
-            PremiumBlockCard {
-                DailyTrendChart(month, dailyMap, budget)
-            }
-        }
-
-        //圆环图+分类明细区域
         if (categories.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("本月暂无记录 🍃", color = AppTheme.colors.textSecondary, fontSize = 16.sp)
-                }
-            }
+            item { EmptyDataView() }
         } else {
             item { PremiumDonutChart(categories, stats.totalExpense) }
             itemsIndexed(categories) { index, category ->
@@ -231,18 +348,142 @@ fun MainDetailContent(
 }
 
 
+// ✨ 高级的胶囊 Segmented Control 切换器
+@Composable
+fun ViewToggleSegment(isYearView: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 8.dp)
+            .height(40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(AppDesignSystem.colors.surfaceVariant), // 使用全局浅灰槽
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(4.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (!isYearView) AppDesignSystem.colors.cardBackground else Color.Transparent)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onToggle(false) },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "月度",
+                color = if (!isYearView) AppDesignSystem.colors.textPrimary else AppDesignSystem.colors.textSecondary,
+                fontWeight = if (!isYearView) FontWeight.Bold else FontWeight.Normal,
+                fontSize = 14.sp
+            )
+        }
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(4.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isYearView) AppDesignSystem.colors.cardBackground else Color.Transparent)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onToggle(true) },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "年度",
+                color = if (isYearView) AppDesignSystem.colors.textPrimary else AppDesignSystem.colors.textSecondary,
+                fontWeight = if (isYearView) FontWeight.Bold else FontWeight.Normal,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+// =======================================================
+// ✨ 2. 修改月视图排版：增加“账单明细”标题
+// =======================================================
+
+
+// =======================================================
+// ✨ 2. 年视图内容排版：与 MainDetailContent 完全对齐
+// =======================================================
+@Composable
+fun YearDetailContent(
+    year: Int,
+    stats: MonthlyStats,
+    categories: List<CategoryPercentage>,
+    monthlyMap: Map<Int, MonthlyRecord>,
+    budget: Double,
+    onYearChange: (Int) -> Unit,
+    onCategoryClick: (CategoryPercentage, Int) -> Unit,
+    onMonthClick: (Int) -> Unit // ✨ 1. 新增接收参数
+) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        // 第一层：带有“账单明细”的顶部栏
+        item { YearSelectorTopBar(year, onYearChange) }
+
+        // 第二层：全新封装且高度固定的热力宫格 (外部加16dp边距与月视图日历对齐)
+        item {
+            // ✨ 2. 将点击事件传递给热力图组件
+            YearlyCalendarGrid(
+                year = year,
+                monthlyMap = monthlyMap,
+                onMonthClick = onMonthClick
+            )
+        }
+
+        // 第三层：数据总览
+        // 传入 isYearView = true 触发文案变更为“本年累计”
+        item {
+            PremiumBlockCard {
+                DataOverviewSection(
+                    stats = stats,
+                    budget = budget,
+                    isYearView = true // ✨ 触发 "本年" 文案！
+                )
+            }
+        }
+
+        // 第四层：月趋势图 (如果你想保持结构一样，这里调用你刚才写的 MonthlyTrendChart)
+        item {
+            PremiumBlockCard {
+                MonthlyTrendChart(
+                    year = year,
+                    monthlyMap = monthlyMap,
+                    budget = budget
+                )
+            }
+        }
+
+        // 第五层：分类数据
+        if (categories.isEmpty()) {
+            item { EmptyDataView() }
+        } else {
+            item { PremiumDonutChart(categories, stats.totalExpense) }
+            itemsIndexed(categories) { index, category ->
+                CategoryDetailRow(category, index) { onCategoryClick(category, index) }
+            }
+            item { Spacer(Modifier.height(32.dp)) }
+        }
+    }
+}
+
 @Composable
 fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .bounceClick() // 保留您自定义的高级物理弹簧效果
+            .bounceClick()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null // ✨ 核心：彻底屏蔽系统的水波纹选择特效
+                indication = null
             ) { onClick() },
-        color = AppTheme.colors.cardBackground,
+        color = AppDesignSystem.colors.cardBackground,
         shape = RoundedCornerShape(20.dp),
         shadowElevation = 1.dp
     ) {
@@ -250,8 +491,17 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(category.icon, fontSize = 20.sp)
                 Spacer(Modifier.width(12.dp))
-                Text(category.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("¥${category.amount}", fontWeight = FontWeight.Black)
+                Text(
+                    category.name,
+                    fontWeight = FontWeight.Bold,
+                    color = AppDesignSystem.colors.textPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "¥${category.amount}",
+                    fontWeight = FontWeight.Black,
+                    color = AppDesignSystem.colors.textPrimary
+                )
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -260,8 +510,7 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                         .weight(1f)
                         .height(6.dp)
                         .clip(CircleShape)
-                        // ❌ 修改前：.background(Color(0xFFF1F2F6))
-                        .background(AppTheme.colors.surfaceVariant)
+                        .background(AppDesignSystem.colors.surfaceVariant)
                 ) {
                     Box(
                         modifier = Modifier
@@ -274,26 +523,107 @@ fun CategoryDetailRow(category: CategoryPercentage, index: Int, onClick: () -> U
                 Text(
                     "${(category.percentage * 100).toInt()}%",
                     fontSize = 12.sp,
-                    // ❌ 修改前：color = Color.Gray
-                    color = AppTheme.colors.textSecondary
+                    color = AppDesignSystem.colors.textSecondary
                 )
             }
         }
     }
 }
 
-
-
-
 @Composable
 fun StatItem(label: String, value: String, modifier: Modifier) {
     Column(modifier) {
-        // ❌ 修改前：Text(label, fontSize = 12.sp, color = Color.Gray)
-        Text(label, fontSize = 12.sp, color = AppTheme.colors.textSecondary) // ✅ 修改后
-        // ❌ 修改前：Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.Black)
-        Text("¥$value", fontSize = 18.sp, fontWeight = FontWeight.Black, color = AppTheme.colors.textPrimary) // ✅ 修改后
+        Text(label, fontSize = 12.sp, color = AppDesignSystem.colors.textSecondary)
+        Text(
+            "¥$value",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Black,
+            color = AppDesignSystem.colors.textPrimary
+        )
     }
 }
 
+@Composable
+fun EmptyDataView() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp), contentAlignment = Alignment.Center
+    ) {
+        Text("暂无记录 🍃", color = AppDesignSystem.colors.textSecondary, fontSize = 16.sp)
+    }
+}
 
+// =======================================================
+// ✨ 1. 新增：统一的小标题组件 (放在 DetailScreen.kt 底部)
+// =======================================================
+@Composable
+fun SectionTitle(title: String) {
+    Text(
+        text = title,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        color = AppDesignSystem.colors.textPrimary,
+        modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
+    )
+}
 
+// =======================================================
+// ✨ 1. 年度顶部栏：完全复刻 DetailTopBar 的 UI
+// =======================================================
+@Composable
+fun YearSelectorTopBar(year: Int, onYearChange: (Int) -> Unit) {
+    // 提取颜色变量
+    val textPrimary = AppDesignSystem.colors.textPrimary
+    val brandAccent = AppDesignSystem.colors.brandAccent
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 20.dp), // ✨ 与 DetailTopBar 边距像素级对齐
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "账单明细", // ✨ 标题文案与位置完全同步
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Black,
+            color = textPrimary,
+            letterSpacing = 1.sp
+        )
+
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = brandAccent.copy(alpha = 0.1f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ... (Icon 切换年份逻辑，确保 InteractionSource 放在 Composable 作用域内) ...
+                val interactionSourceLeft = remember { MutableInteractionSource() }
+                Icon(
+                    Icons.Default.KeyboardArrowLeft, null, tint = brandAccent,
+                    modifier = Modifier.clickable(
+                        interactionSourceLeft,
+                        null
+                    ) { onYearChange(year - 1) }
+                )
+                Text(
+                    "${year}年",
+                    Modifier.padding(horizontal = 8.dp),
+                    fontWeight = FontWeight.Bold,
+                    color = brandAccent
+                )
+                val interactionSourceRight = remember { MutableInteractionSource() }
+                Icon(
+                    Icons.Default.KeyboardArrowRight, null, tint = brandAccent,
+                    modifier = Modifier.clickable(
+                        interactionSourceRight,
+                        null
+                    ) { onYearChange(year + 1) }
+                )
+            }
+        }
+    }
+}

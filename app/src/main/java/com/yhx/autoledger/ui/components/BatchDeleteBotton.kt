@@ -29,10 +29,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.yhx.autoledger.ui.theme.AppDesignSystem // ✨ 引入全局主题
 
 @Composable
 fun BatchDeleteBotton(
@@ -49,7 +49,8 @@ fun BatchDeleteBotton(
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
-            color = Color(0xFF2C2C2E), // 苹果风高级深灰
+            // ✨ 映射专属悬浮条背景色
+            color = AppDesignSystem.colors.batchActionBarBg,
             shadowElevation = 12.dp
         ) {
             Row(
@@ -69,13 +70,15 @@ fun BatchDeleteBotton(
                     Icon(
                         imageVector = Icons.Rounded.DoneAll,
                         contentDescription = if (isAllSelected) "取消全选" else "全选",
-                        tint = if (isAllSelected) Color(0xFF8FD3F4) else Color.White,
+                        // ✨ 映射专属活动色和内容色
+                        tint = if (isAllSelected) AppDesignSystem.colors.batchActionBarActive else AppDesignSystem.colors.batchActionBarContent,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = if (isAllSelected) "取消全选" else "全选",
-                        color = if (isAllSelected) Color(0xFF8FD3F4) else Color.White,
+                        // ✨ 映射专属活动色和内容色
+                        color = if (isAllSelected) AppDesignSystem.colors.batchActionBarActive else AppDesignSystem.colors.batchActionBarContent,
                         fontWeight = FontWeight.Medium,
                         fontSize = 15.sp
                     )
@@ -83,13 +86,15 @@ fun BatchDeleteBotton(
 
                 // 中间：柔和的分割线
                 Spacer(Modifier.width(16.dp))
-                Box(Modifier.width(1.dp).height(20.dp).background(Color(0xFF48484A)))
+                // ✨ 映射专属分割线颜色
+                Box(Modifier.width(1.dp).height(20.dp).background(AppDesignSystem.colors.batchActionBarDivider))
                 Spacer(Modifier.width(16.dp))
 
                 // 右侧：红色删除区
                 Button(
                     onClick = onDeleteClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF3B30)),
+                    // ✨ 复用全局的警示红
+                    colors = ButtonDefaults.buttonColors(containerColor = AppDesignSystem.colors.warningRed),
                     shape = RoundedCornerShape(20.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     modifier = Modifier.height(40.dp)
@@ -97,12 +102,15 @@ fun BatchDeleteBotton(
                     Icon(
                         Icons.Default.DeleteOutline,
                         contentDescription = "删除",
-                        tint = Color.White,
+                        // ✨ 复用强调色上的文本色 (白色)
+                        tint = AppDesignSystem.colors.textOnAccent,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "删除 $selectedCount",
+                        // ✨ 复用强调色上的文本色 (白色)
+                        color = AppDesignSystem.colors.textOnAccent,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )

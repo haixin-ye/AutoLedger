@@ -1,6 +1,7 @@
 package com.yhx.autoledger.data.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -20,4 +21,8 @@ interface CategoryDao {
     // 插入单个自定义分类
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: CategoryEntity)
+
+    // ✨ 新增：删除单个分类
+    @Delete
+    suspend fun deleteCategory(category: CategoryEntity)
 }

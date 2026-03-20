@@ -43,7 +43,7 @@ import com.yhx.autoledger.ui.components.EditLedgerSheet
 import com.yhx.autoledger.ui.components.MainBalanceCard
 import com.yhx.autoledger.ui.components.RefinedTransactionItem
 import com.yhx.autoledger.ui.components.TransactionData
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.ui.theme.CategoryFood
 import com.yhx.autoledger.ui.theme.CategoryOther
 import com.yhx.autoledger.ui.theme.CategoryShop
@@ -206,14 +206,14 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         Icon(
                             Icons.Rounded.ChevronLeft,
                             "上个月",
-                            tint = AppTheme.colors.textSecondary
+                            tint = AppDesignSystem.colors.textSecondary
                         )
                     }
                     Text(
                         text = DateUtils.getYearMonthString(monthOffset),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary
+                        color = AppDesignSystem.colors.textPrimary
                     )
                     IconButton(
                         onClick = { viewModel.changeMonth(1) },
@@ -222,7 +222,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         Icon(
                             Icons.Rounded.ChevronRight,
                             "下个月",
-                            tint = if (monthOffset < 0) AppTheme.colors.textSecondary else Color.LightGray
+                            tint = if (monthOffset < 0) AppDesignSystem.colors.textSecondary else Color.LightGray
                         )
                     }
                 }
@@ -264,7 +264,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         modifier = Modifier
                             .padding(24.dp)
                             .fillMaxWidth(),
-                        color = AppTheme.colors.textTertiary,
+                        color = AppDesignSystem.colors.textTertiary,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -288,7 +288,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                             Text(
                                 text = date,
                                 style = MaterialTheme.typography.labelLarge,
-                                color = AppTheme.colors.textSecondary
+                                color = AppDesignSystem.colors.textSecondary
                             )
 
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -303,7 +303,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                         }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = AppTheme.colors.incomeColor
+                                        color = AppDesignSystem.colors.incomeColor
 //                                        color = Color.Black
                                     )
                                 }
@@ -318,7 +318,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                         }",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = AppTheme.colors.expenseColor
+                                        color = AppDesignSystem.colors.expenseColor
 //                                        color = Color.Black
                                     )
                                 }

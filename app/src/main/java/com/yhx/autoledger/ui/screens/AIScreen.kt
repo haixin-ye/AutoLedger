@@ -33,7 +33,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
@@ -68,7 +68,7 @@ import com.yhx.autoledger.ui.components.AdvancedChatInput
 import com.yhx.autoledger.ui.components.BaseTransactionSheet
 import com.yhx.autoledger.ui.components.ChatAvatar
 import com.yhx.autoledger.ui.theme.AccentBlue
-import com.yhx.autoledger.ui.theme.AppTheme
+import com.yhx.autoledger.ui.theme.AppDesignSystem
 import com.yhx.autoledger.viewmodel.AIViewModel
 import kotlinx.coroutines.launch
 
@@ -101,7 +101,7 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
     }
 
     var lastReadCount by remember { mutableIntStateOf(messages.size) }
-    val dashLineColor = AppTheme.colors.dividerColor
+    val dashLineColor = AppDesignSystem.colors.dividerColor
     LaunchedEffect(isNearBottom, messages.size) {
         if (isNearBottom) {
             lastReadCount = messages.size
@@ -171,7 +171,7 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
 
     val meshGradient = Brush.radialGradient(
 //        colors = listOf(Color(0xFFE0F2F1), Color(0xFFF7F9FC)),
-        colors = listOf(AppTheme.colors.appBackground, AppTheme.colors.appBackground),
+        colors = listOf(AppDesignSystem.colors.appBackground, AppDesignSystem.colors.appBackground),
         center = androidx.compose.ui.geometry.Offset(200f, 200f),
         radius = 1000f
     )
@@ -225,7 +225,7 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                         item {
                             Text(
                                 "AI 正在思考中...",
-                                color = AppTheme.colors.textSecondary,
+                                color = AppDesignSystem.colors.textSecondary,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(start = 12.dp)
                             )
@@ -257,8 +257,8 @@ fun AIScreen(viewModel: AIViewModel = hiltViewModel()) {
                             .height(40.dp)
                             .then(if (unreadCount == 0) Modifier.width(40.dp) else Modifier)
                             .animateContentSize(),
-                        containerColor = AppTheme.colors.brandAccent,
-                        contentColor = AppTheme.colors.textOnAccent,
+                        containerColor = AppDesignSystem.colors.brandAccent,
+                        contentColor = AppDesignSystem.colors.textOnAccent,
                         shape = CircleShape,
                         elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(
                             defaultElevation = 4.dp,
@@ -367,9 +367,9 @@ fun AIHeader() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            Icons.Default.AutoAwesome,
+            Icons.Default.Lightbulb,
             contentDescription = null,
-            tint = AppTheme.colors.brandAccent,
+            tint = AppDesignSystem.colors.brandAccent,
             modifier = Modifier.size(20.dp)
         )
         Spacer(Modifier.width(8.dp))
@@ -377,7 +377,7 @@ fun AIHeader() {
             "AI 记账助手",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
-            color = AppTheme.colors.textPrimary
+            color = AppDesignSystem.colors.textPrimary
         )
     }
 }
@@ -397,8 +397,8 @@ fun AdvancedChatBubble(
     }
 
     val bubbleColor =
-        if (msg.isFromUser) AppTheme.colors.chatUserBubble else AppTheme.colors.chatAiBubble
-    val textColor = if (msg.isFromUser) AppTheme.colors.textOnAccent else AppTheme.colors.chatAiText
+        if (msg.isFromUser) AppDesignSystem.colors.chatUserBubble else AppDesignSystem.colors.chatAiBubble
+    val textColor = if (msg.isFromUser) AppDesignSystem.colors.textOnAccent else AppDesignSystem.colors.chatAiText
 
     Row(
         modifier = Modifier
@@ -457,9 +457,11 @@ fun AdvancedChatBubble(
 @Composable
 fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit) {
     val isConfirmed = preview.isSaved
-    val dashLineColor = AppTheme.colors.dividerColor
+    val dashLineColor = AppDesignSystem.colors.dividerColor
     val displayDate = remember(preview.date) {
         try {
+            // 注意：如果你的项目最低版本支持，推荐用 LocalDate；
+            // 如果必须用 SimpleDateFormat，请尽量不要在列表项滚动时解析它，或者用一个全局静态工具类来处理
             val dateObj = inputSdf.parse(preview.date)
             if (dateObj != null) outputSdf.format(dateObj) else preview.date
         } catch (e: Exception) {
@@ -467,12 +469,16 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
         }
     }
 
+    val dashPathEffect = remember {
+        androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
+    }
+
     Surface(
         modifier = Modifier
             .width(236.dp)
             .padding(vertical = 4.dp),
         shape = RoundedCornerShape(24.dp),
-        color = AppTheme.colors.cardBackground,
+        color = AppDesignSystem.colors.cardBackground,
         shadowElevation = 8.dp,
         tonalElevation = 2.dp
     ) {
@@ -487,7 +493,7 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                     Icon(
                         Icons.Rounded.Edit,
                         contentDescription = "修改",
-                        tint = AppTheme.colors.textTertiary,
+                        tint = AppDesignSystem.colors.textTertiary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -509,14 +515,14 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                         Text(
                             text = if (preview.type == 0) "支出" else "收入",
                             fontSize = 13.sp,
-                            color = AppTheme.colors.textSecondary,
+                            color = AppDesignSystem.colors.textSecondary,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "¥ ${preview.amount}",
                             fontSize = 26.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = AppTheme.colors.textPrimary
+                            color = AppDesignSystem.colors.textPrimary
                         )
                     }
                 }
@@ -532,7 +538,7 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                         color = dashLineColor,
                         start = Offset(0f, 0f),
                         end = Offset(size.width, 0f),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
+                        pathEffect = dashPathEffect
                     )
                 }
 
@@ -555,8 +561,8 @@ fun ReceiptCard(preview: BillPreview, onConfirm: () -> Unit, onEdit: () -> Unit)
                         .height(44.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentBlue,
-                        disabledContainerColor = AppTheme.colors.surfaceVariant,
-                        disabledContentColor = AppTheme.colors.textTertiary
+                        disabledContainerColor = AppDesignSystem.colors.surfaceVariant,
+                        disabledContentColor = AppDesignSystem.colors.textTertiary
                     ),
                     shape = RoundedCornerShape(14.dp),
                     elevation = ButtonDefaults.buttonElevation(
@@ -584,11 +590,11 @@ fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 14.sp, color = AppTheme.colors.textSecondary)
+        Text(text = label, fontSize = 14.sp, color = AppDesignSystem.colors.textSecondary)
         Text(
             text = value,
             fontSize = 14.sp,
-            color = AppTheme.colors.textPrimary,
+            color = AppDesignSystem.colors.textPrimary,
             fontWeight = FontWeight.SemiBold
         )
     }
